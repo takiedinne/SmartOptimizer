@@ -71,7 +71,7 @@ function Base.show(io::IO, results::Results)
   @show io " * Iterations: %d\n" results.iterations
   @show io " * Converged: %s\n" results.converged ? "true" : "false"
   @show io " * Elapsed time: %f seconds" results.elapsed_time
-  if results.trace != nothing
+  if results.trace !== nothing
     @show io "\n * Objective Function Calls: %d" length(results.trace.evaluations)
   end
   return
