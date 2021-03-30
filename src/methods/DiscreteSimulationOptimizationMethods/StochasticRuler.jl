@@ -1,4 +1,9 @@
 
+#= this algorithm is devlopped as described from
+ALREFAEI, Mahmoud H. et ANDRADÓTTIR, Sigrún. 
+Discrete stochastic optimization using 
+variants of the stochastic ruler method. 
+Naval Research Logistics (NRL), 2005, vol. 52, no 4, p. 344-360.=#
 const M=3
 include("../../../simulations/GG1K_simulation.jl")
 function isFeasible(x, upBound, LowBound)
