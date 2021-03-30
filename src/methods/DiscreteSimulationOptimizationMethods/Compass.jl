@@ -1,3 +1,7 @@
+#=
+implementation from the article wroted by Discrete optimization via simulation using COMPASS
+L. Jeff Hong and Barry L. Nelson
+=#
 using DataFrames
 include("../../../simulations/GG1K_simulation.jl")
 
@@ -91,7 +95,8 @@ function COMPASS(sim::Function, x0, upbound, lowBound)
         end
         k+=1
     end
-    x_opt=V.x[argmin(V.meanSampling)], x_opt=V.meanSampling[argmin(V.meanSampling)]
+    V.x[argmin(V.meanSampling)], V.meanSampling[argmin(V.meanSampling)]
 end
-V=COMPASS(sim_GG1K,[1,1,1],20,1)
-
+t= time_ns()
+V=COMPASS(sim_GG1K,ones(3),20,1)
+delay= time_ns()-t 
