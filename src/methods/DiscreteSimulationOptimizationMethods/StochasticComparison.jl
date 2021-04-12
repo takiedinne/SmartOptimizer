@@ -45,4 +45,4 @@ function StochasticComparison(sim::Function, x0, upBound, lowBound)
     x_opt
 end
 StochasticComparison(sim_GG1K,ones(3),20,1)
-sim_GG1K([17,8,9])
+sim_GG1K([11,13,12])

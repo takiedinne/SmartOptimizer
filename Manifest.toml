@@ -708,9 +708,9 @@ version = "0.6.5"
 
 [[Ipopt_jll]]
 deps = ["ASL_jll", "Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "MUMPS_seq_jll", "OpenBLAS32_jll", "Pkg"]
-git-tree-sha1 = "610e03d6ff38a70c2a5eca351d83638309f4afb5"
+git-tree-sha1 = "5a0f832bda36cd6b9582c162199aaa7aabca44e9"
 uuid = "9cc047cb-c261-5740-88fc-0cf96f7bdcc7"
-version = "3.13.4+0"
+version = "3.13.4+1"
 
 [[IterTools]]
 git-tree-sha1 = "05110a2ab1fc5f932622ffea2a003221f4782c18"

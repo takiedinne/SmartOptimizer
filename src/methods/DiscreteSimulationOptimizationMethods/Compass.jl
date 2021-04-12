@@ -100,3 +100,5 @@ end
 t= time_ns()
 V=COMPASS(sim_GG1K,ones(3),20,1)
 delay= time_ns()-t 
+
+sim_GG1K([5,7,6])

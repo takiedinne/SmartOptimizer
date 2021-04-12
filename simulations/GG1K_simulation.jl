@@ -9,8 +9,7 @@ const δ=1/30
 const σ=0.01
 const SEED = 150
 const λ=[1,1,1,1,1,1,1,1,1,1]#arrival process poison distrubition parameter
-const τ=[1,1,1,10,1,50,1,1,1,1]
-
+const τ=[1,1,1,10,1,50,1,1,1,1]# Priority
 
 Random.seed!(SEED)
 const SwitchOverQueueDistribution= Normal(δ,σ)
@@ -77,6 +76,13 @@ end
 end
 
 @resumable function start_sim(sim::Environment, K)
+    
+    custumerarrivalTime=[]
+    custumerWaitingTime=[]
+    for i in 1:J
+        push!(custumerarrivalTime,[])
+        push!(custumerWaitingTime,[])
+    end
     switchProcess= @process SwitchQueue(sim)
     for i in 1:J
         proc=@process CostumerArrival(sim,i)
@@ -91,6 +97,7 @@ end
     # wake up the first queue
 end
 function sim_GG1K(K)
+    
     global processesId=[]
     sim = Simulation()
     @process start_sim(sim,K)
