@@ -46,7 +46,7 @@ function initial_state(method::SimulatedAnnealing, options, objfun, initial_x::A
     SimulatedAnnealingState(copy(best_x), 1, best_x, copy(initial_x), result, result,result)
 end
 function random_initial_point(dim, bounds)
-    x_initial=rand(bounds[1]:bounds[1],dim)
+    x_initial=rand(bounds[1]:bounds[2],dim)
     x_initial
 end
 
