@@ -1,3 +1,7 @@
+#=
+this method is implemented from ORDINAL OPTIMIZATION APPROACH TO STOCHASTIC SIMULATION
+OPTIMIZATION PROBLEMS AND APPLICATIONS
+=#
 using Flux
 using SimJulia
 using IterTools: ncycle
