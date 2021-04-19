@@ -63,7 +63,7 @@ function initial_state(method::ParticleSwarm, options, objfun, initial_x::Abstra
     w = T(1)
 
     X = Array{T,2}(undef, n, n_particles)
-    V = Array{T,2}(undef, n, n_particles)
+    V = Array{Float64,2}(undef, n, n_particles)
     X_best = Array{T,2}(undef, n, n_particles)
     dx = zeros(T, n)
     score = zeros( n_particles)
@@ -341,7 +341,7 @@ function update_swarm!(X::AbstractArray{Tx}, X_best, best_point, n, n_particles,
           r2 = rand()
           vx = X_best[j, i] - X[j, i]
           vg = best_point[j] - X[j, i]
-          V[j, i] = round(V[j, i]*w + c1*r1*vx + c2*r2*vg)
+          V[j, i] = V[j, i]*w + c1*r1*vx + c2*r2*vg
           X[j, i] = round(X[j, i] + V[j, i])
       end
     end
@@ -371,7 +371,7 @@ function compute_cost!(f,
     end
     nothing
 end
-function ParticleSwarmAlgo(f, lower::Array{Int,1}, upper::Array{Int,1} )
+function ParticleSwarmAlgo(f, lower::Array{Int,1}, upper::Array{Int,1} ,dim)
     # initialisation
     initial_x=Array{Int,1}(undef,dim)
     for i in 1:dim
