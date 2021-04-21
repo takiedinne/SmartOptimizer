@@ -446,4 +446,4 @@ function ParticleSwarmAlgo(f, lower::Array{Int,1}, upper::Array{Int,1} ,dim)
     state
 end
 
-state= ParticleSwarmAlgo(sim_GG1K,[1,1,1],[5,5,5])
+state= ParticleSwarmAlgo(sim_GG1K,[1,1,1],[5,5,5],3)
