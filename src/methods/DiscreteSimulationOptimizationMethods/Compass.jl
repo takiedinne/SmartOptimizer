@@ -1,26 +1,10 @@
+#Important Note this method converges rapeadly 
+#maybe i must add a perturbative step to avoid the local optimal
+
 #=
 implementation from the article wroted by Discrete optimization via simulation using COMPASS
 L. Jeff Hong and Barry L. Nelson
 =#
-using DataFrames
-include("../../../simulations/GG1K_simulation.jl")
-
-const m=5 #number of solution sampled at each iteration
-const β=5
-const γ=0.01
-const MAX_SIMULATION=2000
-
-
-function SimulationAllocationRule(k::Int)
-    min(5, floor(β*log(k)^(1+γ))+1)
-end
-function isFeasible(x, upBound, LowBound)
-    isFeasible=true
-    if sum(x.>upBound)>0 || sum(x.<LowBound)>0
-        isFeasible=false
-    end
-    isFeasible
-end
 function GetNeighbors(x, upbound, lowBound)
     dim= length(x)
     neighbors=[]
@@ -39,66 +23,107 @@ function GetNeighbors(x, upbound, lowBound)
     end
     neighbors
 end
+struct COMPASS_Searcher <: LowLevelHeuristic
+    method_name::String
+    neighborsSearcher::Function
+    m::Int
+    β::Int
+    γ
+end
 
-function COMPASS(sim::Function, x0, upbound, lowBound)
-    x_opt=x0
-    k=0#current iteration
-    V=DataFrame(:x=>[],:addSimulation=>Int[],:NumberSimulationDone=>Int[], :meanSampling=>[])# List of visited solutions
-    addSim=SimulationAllocationRule(k)
+function SimulationAllocationRule(method:: COMPASS_Searcher, k::Int)
+    min(5, floor(method.β*log(k)^(1+method.γ))+1)
+end
+function isFeasible(x, upBound, LowBound)
+    isFeasible=true
+    if sum(x.>upBound)>0 || sum(x.<LowBound)>0
+        isFeasible=false
+    end
+    isFeasible
+end
+const COMPASSDefaultPrametres = Dict( :neighborsSearcher => GetNeighbors,
+                                      :m => 5,
+                                      :β => 5,
+                                      :γ => 0.01)
+
+COMPASS_Searcher(;neighborsSearcher = COMPASSDefaultPrametres[:neighborsSearcher],
+                    m= COMPASSDefaultPrametres[:m],
+                    β = COMPASSDefaultPrametres[:β],
+                    γ = COMPASSDefaultPrametres[:γ])= COMPASS_Searcher("COMPASS", neighborsSearcher, m, β, γ)
+
+mutable  struct COMPASS_SearcherState{T} <:State
+    x_opt::AbstractArray{T,1} # here x_opt is the same x_current
+    f_opt
+    k::Int #iteration counter
+    V::DataFrame
+    PromosingArea::AbstractArray{Any,1}# m neighbors for the current x
+end 
+function initial_state(method::COMPASS_Searcher, problem::Problem{T}) where {T<:Number}
+    lower= problem.lower
+    upper = problem.upper
+    objfun = problem.objective
+    initial_x = problem.x_initial
+    dimension = problem.dimension
+    V=DataFrame(:x=>[],:addSimulation=>Int[],
+                    :NumberSimulationDone=>Int[], :meanSampling=>[])# List of visited solutions
+    
+    addSim=SimulationAllocationRule(method,0)
     fit_sum=0
     for i in 1: addSim
-        fit_sum+=sim(x0)
+        fit_sum+=objfun(initial_x)
     end
-    push!(V,(x0,0,addSim,fit_sum/addSim))
-    #get m sampling solution from all the solution space
-    k+=1
+    push!(V,(initial_x,0,addSim,fit_sum/addSim))
     PromosingArea=[]
-    for i in 1:m
-        push!(PromosingArea,rand(lowBound:upbound,length(x0)))
+    # here we initialise the promosing area by random points from the search space 
+    for i in 1:method.m
+        x=copy(initial_x)
+        random_x!(x,dimension, upper=upper, lower=lower)
+        push!(PromosingArea,x)
     end
-    
-    
-    while sum(V.NumberSimulationDone)<MAX_SIMULATION
-        #we add all the solution in promsing area to value
-        addSim=SimulationAllocationRule(k)
-        for i in 1:size(PromosingArea)[1]
-            if PromosingArea[i] in V.x
-                j=findfirst(x->x==PromosingArea[i],V.x)
-                V.addSimulation[j]+=addSim
-            else
-                push!(V,(PromosingArea[i],addSim,0,0))
-            end
+    println(PromosingArea)
+    println(typeof(PromosingArea))
+    COMPASS_SearcherState(initial_x, V[1,:].meanSampling, 0, V, PromosingArea)
+end
+
+function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration::Int, state::COMPASS_SearcherState) where {T}
+    #we add all the solution in promsing area to value
+    addSim=SimulationAllocationRule(method, state.k)
+    PromosingArea=state.PromosingArea
+    V=state.V
+    f= problem.objective
+    for i in 1:size(PromosingArea)[1]
+        if PromosingArea[i] in V.x
+            j=findfirst(x->x==PromosingArea[i],V.x)
+            V.addSimulation[j]+=addSim
+        else
+            push!(V,(PromosingArea[i],addSim,0,0))
         end
-        #run simulations
-        for i in 1:nrow(V)
-            fit_sum=0
-            for j in 1:V.addSimulation[i]
-                fit_sum+=sim(V.x[i])
-            end
-            V.meanSampling[i]=(V.meanSampling[i]*V.NumberSimulationDone[i]+fit_sum)/(V.NumberSimulationDone[i]+V.addSimulation[i])
-            V.NumberSimulationDone[i]+=V.addSimulation[i]
-            V.addSimulation[i]=0
-        end
-        x_opt=V.x[argmin(V.meanSampling)]
-        #here we generate the promosing area for the next iteration and we sample from there m
-        #here we are in integer search space so we alter only one dimension using get neighbors
-        neighbors=GetNeighbors(x_opt,upbound,lowBound)
-        if length(neighbors)==1
-            break
-        end
-        # we sample m solution from these neighbors
-        indexes=rand(1:length(neighbors),m)
-        
-        PromosingArea=[]
-        for i in 1:length(indexes)
-            push!(PromosingArea,neighbors[indexes[i]])
-        end
-        k+=1
     end
+    #run simulations
+    for i in 1:nrow(V)
+        fit_sum=0
+        for j in 1:V.addSimulation[i]
+            fit_sum+=f(V.x[i])
+        end
+        V.meanSampling[i]=(V.meanSampling[i]*V.NumberSimulationDone[i]+fit_sum)/(V.NumberSimulationDone[i]+V.addSimulation[i])
+        V.NumberSimulationDone[i]+=V.addSimulation[i]
+        V.addSimulation[i]=0
+    end
+    state.x_opt=V.x[argmin(V.meanSampling)]
+    #here we generate the promosing area for the next iteration and we sample from there m
+    #here we are in integer search space so we alter only one dimension using get neighbors
+    neighbors=GetNeighbors(state.x_opt,problem.upper,problem.lower)
+    #=if length(neighbors)==1
+        break
+    end=#
+    # we sample m solution from these neighbors
+    indexes=rand(1:length(neighbors),method.m)
+    
+    PromosingArea=[]
+    for i in 1:length(indexes)
+        push!(PromosingArea,neighbors[indexes[i]])
+    end
+    state.PromosingArea=PromosingArea
+    state.k+=1
     V.x[argmin(V.meanSampling)], V.meanSampling[argmin(V.meanSampling)]
 end
-t= time_ns()
-V=COMPASS(sim_GG1K,ones(3),20,1)
-delay= time_ns()-t 
-
-sim_GG1K([5,7,6])

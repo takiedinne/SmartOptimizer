@@ -1,4 +1,4 @@
-abstract type Optimizer end
+abstract type LowLevelHeuristic end
 abstract type State end
 
 struct Options
@@ -11,7 +11,7 @@ end
 function Options(;
   ϵ_f = 1e-16,
   ϵ_x = 1e-16,
-  max_iterations = 1000,
+  max_iterations = 10,
   store_trace = false)
   return Options(
     ϵ_f,
@@ -24,16 +24,40 @@ end
 struct Problem{T}
   objective::Function
   x_initial::Array{T}
-  dimensions::Int
+  continous::Bool
+  dimension::Int
+  upper::Array{T}
+  lower::Array{T}
 end
 
-function Problem(objective::Function, x_initial::Array{T}) where {T<:Number}
-   Problem(objective, x_initial, length(x_initial))
- end
+# TODO i must create anothor file called utilities and move this function to it
+function random_x!(x::Array{T,1}, dim::Int;  upper=Array{T,1}[], lower=Array{T,1}[]) where {T<:Number}
+ 
+  if length(upper) == 0 && length(lower) == 0
+    x =rand(T,dim)
+  elseif length(upper) == 0
+    x =lower .+  abs.(rand(T,dim))
+  elseif length(lower) == 0
+    x =upper .-  abs.(rand(T,dim))
+  else
+    for i in 1:dim
+      x[i]=rand(lower[i]:upper[i])
+    end
+  end
+end
 
-function Problem(objective::Function, dimensions::Int)
-   Problem(objective, zeros(dimensions), dimensions)
- end
+function Problem(objective::Function, continous::Bool, dimension::Int=1; upper=[], lower=[], initial_x=[])
+  T= continous ? Float64 : Int64
+  if length(initial_x) == 0
+    initial_x= Array{T,1}(undef,dimension)
+    random_x!(initial_x,dimension, upper=upper, lower=lower)  
+  end
+  # standarizat the types of upper init_x and lower
+  initial_x=convert(Array{T,1}, initial_x)
+  upper=convert(Array{T,1}, upper)
+  lower = convert(Array{T,1}, lower)
+  Problem(objective, initial_x, continous, dimension, upper, lower)
+end
 
 struct SearchTrace
   evaluations::Array{Tuple}
@@ -48,7 +72,7 @@ struct Results{T}
   method_name::String
   x_initial::Array{T}
   minimizer::Array{T}
-  minimum::T
+  minimum
   iterations::Int
   converged::Bool
   convergence_criteria::Float64
@@ -64,15 +88,15 @@ struct TestProblem{T}
 end
 
 function Base.show(io::IO, results::Results)
-  @show io "Optimization Results\n"
-  @show io " * Algorithm: %s\n" results.method_name
-  @show io " * Minimizer: [%s]\n" join(results.minimizer, ",")
-  @show io " * Minimum: %e\n" results.minimum
-  @show io " * Iterations: %d\n" results.iterations
-  @show io " * Converged: %s\n" results.converged ? "true" : "false"
-  @show io " * Elapsed time: %f seconds" results.elapsed_time
+  println("Optimization Results")
+  println(" * Algorithm: %s", results.method_name)
+  println(" * Minimizer: [",join(results.minimizer, ","),"]")
+  println(" * Minimum: ", results.minimum)
+  println(" * Iterations: ", results.iterations)
+  println(" * Converged: ", results.converged ? "true" : "false")
+  println(" * Elapsed time: ",results.elapsed_time," seconds") 
   if results.trace !== nothing
-    @show io "\n * Objective Function Calls: %d" length(results.trace.evaluations)
+    println(" * Objective Function Calls: ",length(results.trace.evaluations))
   end
   return
 end
