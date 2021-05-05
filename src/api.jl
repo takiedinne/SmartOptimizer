@@ -81,10 +81,12 @@ function has_converged(method::LowLevelHeuristic, x::Tuple{Array{T},Array{T}}, f
 end
 
 function has_converged(f_cur::T, f_prev::T, options::Options) where {T<:Number}
+  f_cur - f_prev < options.ϵ_f && println("f converged")
   return f_cur - f_prev < options.ϵ_f
 end
 
 function has_converged(x_cur::Array{T}, x_prev::Array{T}, options::Options) where {T<:Number}
+  norm(x_cur - x_prev) < options.ϵ_x && println(" x converged")
   return norm(x_cur - x_prev) < options.ϵ_x
 end
 

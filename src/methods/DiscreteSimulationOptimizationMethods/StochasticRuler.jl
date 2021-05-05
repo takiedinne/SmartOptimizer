@@ -5,60 +5,67 @@ Discrete stochastic optimization using
 variants of the stochastic ruler method. 
 Naval Research Logistics (NRL), 2005, vol. 52, no 4, p. 344-360.=#
 const M=3
-include("../../../simulations/GG1K_simulation.jl")
-function isFeasible(x, upBound, LowBound)
-    isFeasible=true
-    for i in 1: length(x)
-        if x[i]<LowBound || x[i]>upBound
-            isFeasible=false
-        end
-    end
-    isFeasible
+struct StochasticRuler <:LowLevelHeuristic
+    method_name::String
+    M::Integer
 end
-function StochasticRuler(sim::Function, x0, upBound, lowBound,dim::Int)
-    f_lowBound=-200 #large number
-    f_upBound=700
-   
-    k=0# current iterations
-    X_opt=x0 #the actuelle optimal solution
-    fit_opt=sim(x0)#the fitness value for the optimal solution
-    currentX=x0 
-    current_fit=fit_opt
-    A=Dict(x0=>current_fit) #sum of sampling values for each visited x
-    C=Dict(x0=>1) #number of visited times foreach x
-    # the neighborhood structure is all x that differ from the current solution in dimension
-    #here R is 1 for all neighbor 
-    while k<2000
-        dimToChange=rand(1:dim)
-        changeValue= rand([-1,1])
-        Z=copy(currentX)
-        Z[dimToChange]+=changeValue
-        if isFeasible(Z,upBound,lowBound)
-            successInTest=true
-            for i in 1:M
-                fit_Z=sim_GG1K(Z)
-                if haskey(A,Z)
-                    A[Z]=(A[Z]*C[Z] + fit_Z)/(C[Z]+1)
-                    C[Z]+=1
-                else
-                    push!(A,Z=>fit_Z)
-                    push!(C,Z=>1)
-                end
-                uniformNumber=rand(f_lowBound:f_upBound)
-                if fit_Z >uniformNumber
-                    successInTest=false
-                    break
-                end
-            end
-            if successInTest
-                currentX=Z
-            end
-            X_opt=argmin(A)
-            fit_opt= A[X_opt]
-            k+=1
-        end
-    end
-    X_opt, fit_opt
+StochasticRuler(;M=3)= StochasticRuler("Stochastic Ruler", M)
+mutable struct StochasticRulerState{T} <: State
+    x::Array{T,1}
+    x_current::Array{T,1}
+    f_x::Real
+    f_current::Real
+    upper_fit::Real
+    lower_fit::Real
+    A::Dict #fitnes mean for Xs
+    C::Dict #nbr of viste
 end
-StochasticRuler(sim_GG1K,ones(3),500,0,3)
-sim_GG1K([0,4,2])
+function initial_state(method::StochasticRuler, problem::Problem{T})where T
+    upper_fit = 1000
+    lower_fit = -1000
+    f= problem.objective(problem.x_initial)
+    A=Dict(problem.x_initial => f)
+    C=Dict(problem.x_initial => 1)
+
+    StochasticRulerState(problem.x_initial, copy(problem.x_initial), f, f, upper_fit, lower_fit, A, C)
+end
+
+
+function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::Int, state::StochasticRulerState) where {T}
+    A= state.A
+    C = state.C
+    dimToChange=rand(1:problem.dimension)
+    changeValue= rand([-1,1])
+    Z=copy(state.x_current)
+    Z[dimToChange] += changeValue
+    if problem.lower[dimToChange] <= Z[dimToChange] <= problem.upper[dimToChange]
+        successInTest=true
+        for i in 1:M
+            fit_Z=problem.objective(Z)
+            if haskey(A,Z)
+                A[Z]=(A[Z]*C[Z] + fit_Z)/(C[Z]+1)
+                C[Z]+=1
+            else
+                push!(A,Z=>fit_Z)
+                push!(C,Z=>1)
+            end
+            stochastic_ruler=rand(state.lower_fit:state.upper_fit)
+            if fit_Z > stochastic_ruler
+                successInTest=false
+                break
+            end
+        end
+        if successInTest
+            state.current=Z
+        end
+        #count the actual optimal 
+        state.x = argmin(state.A)
+        state.f_x = state.A[state.x]
+       
+    end
+    
+    state.x, state.f_x
+end
+function has_converged(method::StochasticRuler, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
+    false
+end
