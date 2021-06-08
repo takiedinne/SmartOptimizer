@@ -1,4 +1,3 @@
-
 #= this algorithm is devlopped as described STOCHASTIC
 COMPARISON ALGORITHM FOR DISCRETE OPTIMIZATION WITH ESTIMATIO
 WEI-BO GONGy, YU-CHI HOz, AND WENGANG ZHAI
@@ -14,6 +13,7 @@ struct StochasticComparison <:LowLevelHeuristic
     c
     k_0
 end
+
 StochasticComparison(;simulationAllocationRule=SimulationAllocationRule, neighbor=random_x!, c=1, k_0=1) = 
     StochasticComparison("Stochastic Comparison", simulationAllocationRule, neighbor, c, k_0)
 
@@ -33,7 +33,7 @@ end
 
 function update_state!(method::StochasticComparison, problem::Problem{T}, iteration::Int, state::StochasticComparisonState) where {T}
 
-    k=state.iteration
+    k = state.iteration
     
     # get a condidate solution from the neiborhood here we assume that all the search space construct the Naval
     # and also we assume that the probabilty of moving to anthor solution is equal for all the space
@@ -70,8 +70,14 @@ function update_state!(method::StochasticComparison, problem::Problem{T}, iterat
         state.nbr_simulated_optimal += nbr_simulation_performed
     end
     state.iteration+=1
-    state.x, state.mean_f
+    state.x, state.mean_f, nbr_simulation_performed*2
 end
 function has_converged(method::StochasticComparison, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
     false
 end
+
+function create_state_for_HH(method::StochasticComparison, problem::Problem, archive)
+    x, f = archive.x[argmin(archive.fit)], minimum(archive.fit)
+    return StochasticComparisonState(x,copy(x), f, f, 1, 1), 0   
+end
+

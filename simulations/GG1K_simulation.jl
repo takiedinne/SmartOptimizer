@@ -3,7 +3,12 @@ using ResumableFunctions
 using SimJulia
 using Random
 
-const J=3 #number of queus (variables)
+mutable struct Custumer
+    arrival_time
+    served_time
+end
+
+const J=10 #number of queus (variables)
 const μ=20
 const δ=1/30
 const σ=0.01
@@ -21,10 +26,6 @@ numberOfCustumer=zeros(J)
 currentQueue=1
 custumerarrivalTime=[]
 custumerWaitingTime=[]
-for i in 1:J
-    push!(custumerarrivalTime,[])
-    push!(custumerWaitingTime,[])
-end
 
 SteadyStateAchieved=zeros(J)
 
@@ -36,10 +37,10 @@ SteadyStateAchieved=zeros(J)
         try @yield timeout(env,Inf) catch end
         #initialiser mi par la valeur de ki
         m=K[name]
-        global currentQueue= name
+        #global currentQueue= name
         #serve the client
         while numberOfCustumer[name] > 0 && m > 0
-            push!(custumerWaitingTime[name], now(env)-popfirst!(custumerarrivalTime[name]))
+            push!(custumerWaitingTime[name], now(env) - popfirst!(custumerarrivalTime[name]))
             @yield timeout(env,rand(ServiceTimeDistribution))
             global numberOfCustumer[name]-=1
             global m-=1
@@ -54,10 +55,11 @@ end
 #switch process
 @resumable function SwitchQueue(env::Environment)
     while true
+
         try @yield timeout(env, Inf) catch end
         @yield timeout(env,rand(SwitchOverQueueDistribution))
-        global currentQueue=currentQueue+1
-        if currentQueue>J  global currentQueue =1 end
+        global currentQueue = currentQueue + 1
+        if currentQueue > J  global currentQueue = 1 end
         @yield interrupt(processesId[currentQueue])
     end
 end
@@ -67,22 +69,12 @@ end
     while true
         @yield timeout(env,rand(ArrivalDistribution))
         push!(custumerarrivalTime[queueId],now(env))
-        numberOfCustumer[queueId]+=1
-        #=println("CostumerArrival: a new customer is come to the queue number $queueId ...")
-        if SteadyStateAchieved[queueId]==1
-            break
-        end=#
+        numberOfCustumer[queueId] += 1
     end
 end
 
 @resumable function start_sim(sim::Environment, K)
     
-    custumerarrivalTime=[]
-    custumerWaitingTime=[]
-    for i in 1:J
-        push!(custumerarrivalTime,[])
-        push!(custumerWaitingTime,[])
-    end
     switchProcess= @process SwitchQueue(sim)
     for i in 1:J
         proc=@process CostumerArrival(sim,i)
@@ -97,18 +89,25 @@ end
     # wake up the first queue
 end
 function sim_GG1K(K)
-    
+    global custumerarrivalTime=[]
+    global custumerWaitingTime=[]
+    for i in 1:J
+        push!(custumerarrivalTime,[])
+        push!(custumerWaitingTime,[])
+    end
     global processesId=[]
     sim = Simulation()
     @process start_sim(sim,K)
     #println("Simulation is started pour: $K...")
-    run(sim,2000)
+    run(sim,2500)
     #println("Simulation is finished...")
     sumMean= 0
     sumWeight=0
     for i in 1:J
-        sumMean+=mean(custumerWaitingTime[i])*τ[i]
-        sumWeight+=τ[i]
+        if length(custumerWaitingTime[i]) > 0
+            sumMean+=mean(custumerWaitingTime[i])*τ[i]
+            sumWeight+=τ[i]
+        end
     end
     sumMean/sumWeight
 end

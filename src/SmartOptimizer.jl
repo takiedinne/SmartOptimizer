@@ -1,4 +1,7 @@
 module SmartOptimizer
+    using DataFrames: Vector
+using Evolutionary: minimum, population_size
+using Base: Real, Integer, Float64
     using LinearAlgebra
     using Random
     using DataFrames

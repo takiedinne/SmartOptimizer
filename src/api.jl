@@ -1,8 +1,119 @@
+function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
+  iteration = 1
+  converged = false
+  x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
+
+  f_cur, f_prev = problem.objective(problem.x_initial), Inf
+
+  # Start timing now
+  t1 = time()
+  lowLevelHeuristics= loadAllLLH()
+  state = initial_HHstate(method, problem)
+
+  while true
+    LLHs = selectLLH(method, lowLevelHeuristics, problem, iteration, state)
+   
+    performances = applyLLHs!(method, LLHs, problem, iteration, state)
+    
+    learningFunction(method, LLHs, problem, iteration, state, performances)
+    if ( iteration >= options.max_iterations)
+      break
+    end
+    iteration += 1
+  end
+
+  elapsed_time = time() - t1
+
+  return Results(
+    method.method_name,
+    problem.x_initial,
+    x_cur,
+    f_cur,
+    iteration,
+    converged,
+    options.ϵ_x,
+    elapsed_time,
+    trace
+  )
+end
+
+function HH_optimize(method::LowLevelHeuristic, problem::Problem{T}) where {T<:Number}
+  return optimize(method, problem, Options())
+end
+
+function loadAllLLH()
+  methods= []
+  push!(methods, [GA(), 0, x, Inf])
+  push!(methods, [HookeAndJeeves(), 0, x, Inf])
+  push!(methods, [NelderMead(), 0, x, Inf])
+  #push!(methods, [OCBA(), 0, x, Inf])
+  push!(methods, [ParticleSwarm(), 0, x, Inf])
+  push!(methods, [SimulatedAnnealing(), 0, x, Inf])
+  push!(methods, [StochasticComparison(), 0, x, Inf])
+  push!(methods, [StochasticRuler(), 0, x, Inf])
+  push!(methods, [TabuSearch(), 0, x, Inf])
+  push!(methods, [GeneratingSetSearcher(), 0, x, Inf])
+  push!(methods, [COMPASS_Searcher(), 0, x, Inf])
+  return methods
+end
+
+function apply_LLH!(LLHs, problem::Problem, phaseSize::Integer, HHState::HH_State)
+  performances=[]
+  newSolutions=[]
+  for LLH in LLHs
+    state=create_state_for_HH()# we'll see how this  function works after
+    prev_fit=HHState.x_fit
+    current_fit = HHState.x_fit
+    current_x =HHState.x
+    nbrSim=0
+    #start timing for LLH monitoring
+    CPUTime =time()
+    for i in 1:phaseSize
+      current_x, current_fit, lastnbrSim = update_state!(LLH, problem, iteration, state)
+      nbrSim += lastnbrSim
+    end
+    CPUTime=time()-CPUTime
+    # create the performance struct
+    Δfitness= current_fit - prev_fit
+    performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
+    push!(performances, performance)
+    push!(newSolutions, [current_x, current_fit])
+  end
+  newSolutions, performances
+end
+
+function get_solution_from_archive(archive, problem::Problem, nbr_of_solutions::Integer)
+  nbrSim=0
+  archiveCopy= copy(archive)
+  archiveCopy= sort!(archiveCopy,[:fit])
+  if nrow(archive) >= nbr_of_solutions
+      pop = archiveCopy.x[1:nbr_of_solutions]
+      f_pop = archiveCopy.fit[1:nbr_of_solutions]
+  else
+      pop = archiveCopy.x
+      f_pop = archiveCopy.fit
+      n = length(archiveCopy.x[1])
+      for i in 1:(nbr_of_solutions - nrow(archive))
+          tmp = copy(archiveCopy.x[1])
+          random_x!(tmp, n, upper=problem.upper, lower=problem.lower)
+          push!(pop, tmp)
+          push!(f_pop, problem.objective(tmp))
+          nbrSim += 1
+      end
+  end
+  if nbr_of_solutions == 1
+    return pop[1], f_pop[1], nbrSim
+  else
+    return pop, f_pop, nbrSim
+  end
+end
+
 function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
   iteration = 1
   converged = false
   trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
+  
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
 
   if options.store_trace
@@ -13,13 +124,15 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
   end
 
   # Start timing now
-  t1 = time_ns()
+  t1 = time()
 
   state = initial_state(method, problem)
-
+  nbrTotalSim = 0
   while true
+    println(method.method_name," iteration: ", iteration)
+    x_cur, f_cur, nbrSim = update_state!(method, problem, iteration, state)
+    nbrTotalSim += nbrSim
     
-    x_cur, f_cur = update_state!(method, problem, iteration, state)
     if options.store_trace
       trace!(method, trace, iteration, x_cur, f_cur, options, state)
     end
@@ -35,7 +148,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
     iteration += 1
   end
 
-  elapsed_time = time_ns() - t1
+  elapsed_time = time() - t1
 
   return Results(
     method.method_name,
@@ -47,7 +160,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
     options.ϵ_x,
     elapsed_time,
     trace
-  )
+  ), nbrTotalSim
 end
 
 function optimize(method::LowLevelHeuristic, problem::Problem{T}) where {T<:Number}
@@ -77,7 +190,8 @@ function trace!(trace::SearchTrace, i::Int, x::Array{T}, f::T) where {T<:Number}
 end
 
 function has_converged(method::LowLevelHeuristic, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
-  return has_converged(x..., options) || has_converged(f..., options)
+ # return has_converged(x..., options) || has_converged(f..., options)
+ return false 
 end
 
 function has_converged(f_cur::T, f_prev::T, options::Options) where {T<:Number}

@@ -1,4 +1,3 @@
-
 #=
 about the step size initially i will fixed to 
  0.25 from all the search space  and at each 
@@ -55,6 +54,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     upper = problem.upper
     lower = problem.lower
     x_k, x_b = state.x_k, state.x_b
+    nbrSim = 0
     # Evaluate a positive and a negative point in each cardinal direction
     # and update as soon as one is found
     while state.current_dim <= n
@@ -78,6 +78,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
             end
 
             f_trial = problem.objective(x_trial)
+            nbrSim += 1
     
             # If the point is better, immediately go there
             if (f_trial <= state.f_k)
@@ -89,7 +90,6 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
             end
         end
         improved && break
-
         state.current_dim += 1
     end
     
@@ -103,6 +103,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     x_trial = 2x_k - x_b
     check_in_bounds(upper, lower, x_trial)
     f_trial = problem.objective(x_trial)
+    nbrSim += 1
     copy!(x_b, x_k)
     state.current_dim = 1
 
@@ -112,7 +113,17 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
         state.f_k = f_trial
     end
     
-    state.x_k, state.f_k
+    state.x_k, state.f_k, nbrSim
+end
+
+function create_state_for_HH(method::HookeAndJeeves, problem::Problem, archive)
+    return HookeAndJeevesState(
+                1,
+                method.initial_step_size,
+                minimum(archive.fit),
+                copy(archive.x[argmin(archive.fit)]),
+                copy(archive.x[argmin(archive.fit)])
+                ), 0
 end
 
 

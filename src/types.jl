@@ -1,3 +1,6 @@
+abstract type HyperHeuristic end 
+abstract type HH_State end 
+
 abstract type LowLevelHeuristic end
 abstract type State end
 
@@ -11,7 +14,7 @@ end
 function Options(;
   ϵ_f = 1e-16,
   ϵ_x = 1e-16,
-  max_iterations = 10,
+  max_iterations = 5,
   store_trace = false)
   return Options(
     ϵ_f,
@@ -87,6 +90,12 @@ struct TestProblem{T}
   y_range::Tuple{Real, Real}
 end
 
+struct PerformanceFactors
+  ΔFitness::Real
+  numSimRun::Integer
+  CPUTime::Float64
+  #here you can add another factors
+end
 function Base.show(io::IO, results::Results)
   println("Optimization Results")
   println(" * Algorithm: %s", results.method_name)

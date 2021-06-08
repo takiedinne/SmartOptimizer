@@ -6,8 +6,8 @@ function default_neighbor!(x::AbstractArray{T}, x_proposal::AbstractArray, upper
     @assert size(x) == size(x_proposal)
     for i in 1:length(x)
         tmp = x[i] + round(randn())
-        if lower[1]<tmp< upper[2] # workaround because all types might not have randn
-            x_proposal[i] = x[i] + tmp
+        if lower[i] < tmp < upper[i] # workaround because all types might not have randn
+            x_proposal[i] =  tmp
         else
             x_proposal[i] = x[i]
         end
@@ -20,6 +20,7 @@ struct SimulatedAnnealing{Tn, Ttemp} <:LowLevelHeuristic
     temperature::Ttemp
     keep_best::Bool # not used!?
 end
+
 SimulatedAnnealing(;neighbor = default_neighbor!,
                     temperature = log_temperature,
                     keep_best::Bool = true) =
@@ -36,7 +37,6 @@ mutable struct SimulatedAnnealingState{Tx,T} <:State
 end
 
 function initial_state(method::SimulatedAnnealing, problem::Problem{T}) where T
-
     result=problem.objective(problem.x_initial)
     # Store the best state ever visited
     best_x = copy(problem.x_initial)
@@ -44,15 +44,16 @@ function initial_state(method::SimulatedAnnealing, problem::Problem{T}) where T
 end
 
 function update_state!(method::SimulatedAnnealing, problem::Problem{T}, iteration::Int, state::SimulatedAnnealingState) where {T}
+    nbrSim = 0
     # Determine the temperature for current iteration
     t = method.temperature(state.iteration)
 
     # Randomly generate a neighbor of our current state
     method.neighbor(state.x_current, state.x_proposal, problem.upper, problem.lower)
-    println(state.x_proposal)
+    
     # Evaluate the cost function at the proposed state
     state.f_proposal = problem.objective(state.x_proposal)
-
+    nbrSim +=1
     if state.f_proposal <= state.f_x_current
         # If proposal is superior, we always move to it
         copyto!(state.x_current, state.x_proposal)
@@ -73,6 +74,12 @@ function update_state!(method::SimulatedAnnealing, problem::Problem{T}, iteratio
     end
     state.iteration += 1
 
-    state.x_current, state.f_x_current
+    state.x_current, state.f_x_current, nbrSim
 end
 
+function create_state_for_HH(method::SimulatedAnnealing, problem::Problem, archive)
+    result=minimum(archive.fit)
+    # Store the best state ever visited
+    best_x = copy(archive.x[argmin(archive.fit)])
+    SimulatedAnnealingState(copy(best_x), 1, best_x, copy(best_x), result, result,result), 0
+end

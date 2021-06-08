@@ -44,6 +44,7 @@ struct NelderMead{Ts <: Simplexer, Tp <: NMParameters} <: LowLevelHeuristic
     initial_simplex::Ts
     parameters::Tp
 end
+
 NelderMead(;initial_simplex=AffineSimplexer(), parameters=FixedParameters())= NelderMead("Nelder Mead",
                                                                             initial_simplex, parameters)
 
@@ -104,7 +105,7 @@ function initial_state(method::NelderMead, problem::Problem)
 
     α, β, γ, δ = parameters(method.parameters, n)
     
-NelderMeadState(copy(initial_x), # Variable to hold final minimizer value for MultivariateOptimizationResults
+    NelderMeadState(copy(initial_x), # Variable to hold final minimizer value for MultivariateOptimizationResults
           0,#iteration
           m, # Number of vertices in the simplex
           simplex, # Maintain simplex in state.simplex
@@ -133,9 +134,9 @@ function sgnd(k)
     result
 end
 function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int, state::NelderMeadState) where {T}
-    
     shrink = false
     n, m = length(state.x), state.m
+    nbrSim = 0
     centroid!(state.x_centroid, state.simplex, state.i_order[m])# doesn't need bounds check neccesarily the centroid is onside the bounds
     
     copyto!(state.x_lowest, state.simplex[state.i_order[1]])
@@ -156,6 +157,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     check_in_bounds( problem.upper, problem.lower, state.x_reflect)
     
     f_reflect = problem.objective(state.x_reflect)
+    nbrSim += 1
     if f_reflect < state.f_lowest
         # Compute an expansion
         @inbounds for j in 1:n
@@ -167,7 +169,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
         check_in_bounds(problem.upper, problem.lower, state.x_cache)
 
         f_expand =problem.objective(state.x_cache)
-
+        nbrSim +=1
         if f_expand < f_reflect
             copyto!(state.simplex[state.i_order[m]], state.x_cache)
             @inbounds state.f_simplex[state.i_order[m]] = f_expand
@@ -203,6 +205,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
 
             check_in_bounds(problem.upper, problem.lower, state.x_cache)
             f_outside_contraction = problem.objective(state.x_cache)
+            nbrSim += 1
             if f_outside_contraction < f_reflect
                 copyto!(state.simplex[state.i_order[m]], state.x_cache)
                 @inbounds state.f_simplex[state.i_order[m]] = f_outside_contraction
@@ -223,6 +226,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
             check_in_bounds(problem.upper, problem.lower, state.x_cache)
 
             f_inside_contraction = problem.objective(state.x_cache)
+            nbrSim += 1
             if f_inside_contraction < f_highest
                 copyto!(state.simplex[state.i_order[m]], state.x_cache)
                 @inbounds state.f_simplex[state.i_order[m]] = f_inside_contraction
@@ -241,6 +245,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
             ord = state.i_order[i]
             copyto!(state.simplex[ord], state.x_lowest + round.(state.δ*(state.simplex[ord]-state.x_lowest)))
             state.f_simplex[ord] = problem.objective(state.simplex[ord])
+            nbrSim += 1
         end
         step_type = "shrink"
         sortperm!(state.i_order, state.f_simplex)
@@ -258,7 +263,58 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     f_second_highest = state.f_simplex[state.i_order[n]]
     f_highest = state.f_simplex[state.i_order[m]]
 
-    println(state.step_type)
-    println(state.x_lowest)
-    state.x_lowest, state.f_lowest
+    state.x_lowest, state.f_lowest, nbrSim
+end
+function create_state_for_HH(method::NelderMead, problem::Problem, archive)
+    T = eltype(method.parameters.α)
+    n = problem.dimension 
+    m = n + 1 # simplex size
+    nbrSim = 0
+    archiveCopy= copy(archive)
+    archiveCopy= sort!(archiveCopy,[:fit])
+    initial_x= archiveCopy.x[1]
+    if nrow(archive) >= m
+        simplex = archiveCopy.x[1:m]
+        f_simplex = archiveCopy.fit
+    else
+        simplex = archiveCopy.x
+        f_simplex = archiveCopy.fit
+        for i in 1:(m-nrow(archive))
+            tmp = copy(problem.x_initial)
+            random_x!(tmp, n, upper=problem.upper, lower=problem.lower)
+            push!(simplex, tmp)
+            push!(f_simplex, problem.objective(tmp))
+            nbrSim += 1
+        end
+    end
+    
+    # Get the indices that correspond to the ordering of the f values
+    # at the vertices. i_order[1] is the index in the simplex of the vertex
+    # with the lowest function value, and i_order[end] is the index in the
+    # simplex of the vertex with the highest function value
+    
+    i_order = sortperm(f_simplex)
+
+    α, β, γ, δ = parameters(method.parameters, n)
+    
+    NelderMeadState(copy(initial_x), # Variable to hold final minimizer value for MultivariateOptimizationResults
+          0,#iteration
+          m, # Number of vertices in the simplex
+          simplex, # Maintain simplex in state.simplex
+          centroid(simplex,  i_order[m]), # Maintain centroid in state.centroid
+          copy(initial_x), # Store cache in state.x_lowest
+          copy(initial_x), # Store cache in state.x_second_highest
+          copy(initial_x), # Store cache in state.x_highest
+          copy(initial_x), # Store cache in state.x_reflect
+          copy(initial_x), # Store cache in state.x_cache
+          f_simplex, # Store objective values at the vertices in state.f_simplex
+          T(nmobjective(f_simplex, n, m)), # Store nmobjective in state.nm_x
+          f_simplex[i_order[1]], # Store lowest f in state.f_lowest
+          i_order, # Store a vector of rankings of objective values
+          T(α),
+          T(β),
+          T(γ),
+          T(δ),
+          "initial"), nbrSim
+
 end

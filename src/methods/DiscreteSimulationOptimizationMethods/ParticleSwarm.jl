@@ -23,7 +23,7 @@ mutable struct ParticleSwarmState{Tx,T} <:State
     X_best# best posistion for each particle
     score::Vector # current score for each particle
     best_score::Vector #best score for each particle
-    x_learn #used toaccelerate the search
+    x_learn #used to accelerate the search
     current_state 
     iterations::Int
 end
@@ -179,7 +179,7 @@ function get_swarm_state(X::AbstractArray{Tx}, score, best_point, previous_state
         for k in 1:n_particles
             for dim in 1:n
                 @inbounds ddd = (X[dim, i] - X[dim, k])
-                dd += ddd * ddd
+                dd += ddd^2
             end
         end
         d[i] = sqrt(dd)
@@ -325,15 +325,16 @@ end
 function compute_cost!(f,
                        n_particles::Int,
                        X::Matrix,
-                       score::Vector)
-
+                       score)
+    
     for i in 1:n_particles
         score[i] = f(X[:, i])
     end
-    nothing
+    
 end
+
 function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::Int, state::ParticleSwarmState) where {T}
-       
+    nbrSim = 0   
     n = problem.dimension
 
     state.f_x = housekeeping!(state.score,
@@ -350,7 +351,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     # if x_learn presents the new best solution.
     # In all other cases discard x_learn.
     # This helps jumping out of local minima.
-    worst_score, i_worst = findmax(state.score)
+    i_worst = argmax(state.score)
     
     state.x_learn=state.x
     random_index = rand(1:n)
@@ -369,6 +370,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     end
     
     score_learn = problem.objective(state.x_learn)
+    nbrSim +=1
 
     if score_learn < state.f_x
         state.f_x = score_learn 
@@ -379,7 +381,6 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
         state.best_score[i_worst] = score_learn
     end
 
-    # TODO find a better name for _f (look inthe paper, it might be called f there)
     state.current_state, _f = get_swarm_state(state.X, state.score, state.x, state.current_state)
     #state.w, state.c1, state.c2 = update_swarm_params!(state.c1, state.c2, state.w, state.current_state, _f)
     update_swarm!(state.X, state.X_best, state.x, n, method.n_particles, state.V, state.w, state.c1, state.c2)
@@ -388,9 +389,70 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
         limit_X!(state.X, problem.lower, problem.upper, method.n_particles, n)
     end
     compute_cost!(problem.objective, method.n_particles, state.X, state.score)
-
+    nbrSim += method.n_particles
     state.iteration += 1
 
-    collect(state.x), state.f_x
+    collect(state.x), state.f_x, nbrSim
 end
 
+function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
+    nbrSim = 0
+    n = length(problem.x_initial)
+    upper = problem.upper
+    lower = problem.lower
+    if 0 < method.n_particles < 3 
+        @warn("Number of particles is set to 3 (minimum required)")
+        method.n_particles = 3
+    elseif method.n_particles==0
+        # user did not define number of particles
+        n_particles = maximum([3, length(problem.x_initial)])
+    end
+
+    X_tmp, score, nbrSim = get_solution_from_archive(archive, problem, n_particles)
+    X= X_tmp[1]
+    for i in 2: length(X_tmp)
+        X= hcat(X, X_tmp[i])
+    end
+
+    V = Array{Float64,2}(undef, n, n_particles)
+    X_best = copy(X)
+    best_score = copy(score)
+    
+    x = copy(archive.x[argmin(archive.fit)])
+    x_learn = copy(x)
+
+    current_state = 0
+    limit_search_space= false
+    
+    # if search space is limited, spread the initial population
+    # uniformly over the whole search space
+    if length(upper) == length(lower)
+        ww = upper - lower
+        limit_search_space= true
+    end
+    for i in 1: method.n_particles
+        if limit_search_space
+            # initialise randomly positif or negative vitess that not execced 0.5 from the search space 
+            V[:,i] = map(x->x * (rand() * 2 - 1) / 10, ww)
+        else #unbounded search space
+            V[:,i] = rand(T, n)
+        end
+    end
+
+    ParticleSwarmState(
+        x,
+        score[1],
+        0,
+        c1,
+        c2,
+        w,
+        limit_search_space,
+        X,
+        V,
+        X_best,
+        score,
+        best_score,
+        x_learn,
+        current_state,
+        1000), nbrSim
+end

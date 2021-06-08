@@ -1,10 +1,9 @@
-
 #= this algorithm is devlopped as described from
 ALREFAEI, Mahmoud H. et ANDRADÓTTIR, Sigrún. 
 Discrete stochastic optimization using 
 variants of the stochastic ruler method. 
 Naval Research Logistics (NRL), 2005, vol. 52, no 4, p. 344-360.=#
-const M=3
+
 struct StochasticRuler <:LowLevelHeuristic
     method_name::String
     M::Integer
@@ -21,9 +20,10 @@ mutable struct StochasticRulerState{T} <: State
     C::Dict #nbr of viste
 end
 function initial_state(method::StochasticRuler, problem::Problem{T})where T
-    upper_fit = 1000
-    lower_fit = -1000
+    
     f= problem.objective(problem.x_initial)
+    upper_fit = f
+    lower_fit = f
     A=Dict(problem.x_initial => f)
     C=Dict(problem.x_initial => 1)
 
@@ -32,6 +32,8 @@ end
 
 
 function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::Int, state::StochasticRulerState) where {T}
+    nbrSim = 0
+    M=method.M
     A= state.A
     C = state.C
     dimToChange=rand(1:problem.dimension)
@@ -40,8 +42,10 @@ function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::
     Z[dimToChange] += changeValue
     if problem.lower[dimToChange] <= Z[dimToChange] <= problem.upper[dimToChange]
         successInTest=true
+        fit_Z=Inf
         for i in 1:M
             fit_Z=problem.objective(Z)
+            nbrSim += 1
             if haskey(A,Z)
                 A[Z]=(A[Z]*C[Z] + fit_Z)/(C[Z]+1)
                 C[Z]+=1
@@ -56,7 +60,8 @@ function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::
             end
         end
         if successInTest
-            state.current=Z
+            state.x_current=Z
+            state.lower_fit= fit_Z
         end
         #count the actual optimal 
         state.x = argmin(state.A)
@@ -64,8 +69,19 @@ function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::
        
     end
     
-    state.x, state.f_x
+    state.x, state.f_x, nbrSim
 end
 function has_converged(method::StochasticRuler, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
     false
+end
+
+function create_state_for_HH(method::StochasticRuler, problem::Problem, archive)
+    f= minimum(archive.fit)
+    x= archive.x[argmin(archive.fit)]
+    upper_fit = f
+    lower_fit = f
+    A=Dict(x => f)
+    C=Dict(problem.x_initial => 1)
+
+    StochasticRulerState(x, copy(x), f, f, upper_fit, lower_fit, A, C), 0
 end

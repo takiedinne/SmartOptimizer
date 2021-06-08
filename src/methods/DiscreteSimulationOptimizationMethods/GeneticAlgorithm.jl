@@ -66,7 +66,6 @@ function initial_state(method::GA, problem::Problem{T}) where {T<:Number}
     # Evaluate population fitness
     fitness = map(i -> problem.objective(i), population)
     minfit, fitidx = findmin(fitness)
-
     # setup initial state
     return GAState(N, eliteSize, minfit, fitness, copy(population[fitidx]), population)
 end
@@ -126,5 +125,30 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     state.x = population[fitidx]
     state.x_fitness = state.fitpop[fitidx]
     #return the best values
-    state.x , state.x_fitness 
+    state.x , state.x_fitness, method.populationSize
+end
+
+function create_state_for_HH(method::GA, problem::Problem, archive)
+    N = problem.dimension
+    fitness = zeros(method.populationSize)
+    # setup state values
+    eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
+    population= copy(archive)
+    nbrSim = 0
+    if method.populationSize > nrow(archive)
+        #we generate random solution to complet the solution
+        for i in 1:(method.populationSize- nrow(archive))
+            tmp=copy(population.x[1])
+            random_x!(tmp, length(tmp), upper = problem.upper, lower = problem.lower)
+            tmp_fit = problem.objective(tmp)
+            push!(population, (tmp, tmp_fit))
+            nbrSim += 1
+        end
+    end
+
+    sort!(population, [:fit])
+    fitness =  population.fit[1:method.populationSize]
+    population = population.x[1:method.populationSize]
+    # setup initial state
+    GAState(N, eliteSize, fitness[1], fitness, copy(population[1]), population), nbrSim
 end

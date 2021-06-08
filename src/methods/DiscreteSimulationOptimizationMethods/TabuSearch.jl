@@ -5,8 +5,8 @@ function default_neighbor(x::AbstractArray{T}, upbound, lowBound, objfun) where 
     for i in 1:length(x)
         x1=copy(x)
         x2=copy(x)
-        x1[i]+=1
-        x2[i]-=1
+        x1[i] += 1
+        x2[i] -= 1
         if isFeasible(x1,upbound, lowBound)  
             push!(neighbors,(x1,objfun(x1),i))
             nbr_simulation+=1
@@ -52,10 +52,11 @@ function initial_state(method::TabuSearch, problem::Problem{T}) where T
 end
 
 function update_state!(method::TabuSearch, problem::Problem{T}, iteration::Int, state::TabuSearchState) where {T}
-    
+    nbrSim = 0
     #get all the neighbors and their fitness value
-    neighbors, nbr_simulation=method.neighbor(state.x_current, problem.upper, problem.lower, problem.objective)
+    neighbors, nbr_simulation = method.neighbor(state.x_current, problem.upper, problem.lower, problem.objective)
     state.nbr_simulation+=nbr_simulation
+    nbrSim += nbr_simulation
     best_neighbor=neighbors[argmin(neighbors.f),:]
     #increase= true
     if best_neighbor.f >= state.f_x
@@ -92,5 +93,10 @@ function update_state!(method::TabuSearch, problem::Problem{T}, iteration::Int, 
         end
     end 
 
-    state.x, state.f_x
+    state.x, state.f_x, nbrSim
+end
+
+function create_state_for_HH(mathod::TabuSearch, problem::Problem, archive)
+    best_x, result, nbrSim =  get_solution_from_archive(archive, problem, 1)
+    TabuSearchState(copy(best_x), 1, best_x,  result, result,Dict(),Dict(),0), nbrSim
 end

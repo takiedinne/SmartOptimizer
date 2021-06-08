@@ -11,7 +11,6 @@ abstract type DirectionGenerator end
 
 struct ConstantDirectionGen <: DirectionGenerator
     directions::Matrix{Float64}
-
     ConstantDirectionGen(directions) = new(directions)
 end
 
@@ -64,8 +63,8 @@ GeneratingSetSearcher(;direction_gen = GSSDefaultParameters[:direction_gen],
 
 mutable struct GeneratingSetSearcherState{T} <: State
     directions
-    n::Int
-    k::Int
+    n::Int # problem dimension 
+    k::Int # iteration counter
     step_size::Float64           # current step size
     x::AbstractArray{T,1}
     xfitness::Float64
@@ -75,7 +74,6 @@ function initial_state(method::GeneratingSetSearcher, problem::Problem{T}) where
     upper = problem.upper
     objfun = problem.objective
     initial_x = problem.x_initial
-    
     n= length(initial_x)
     directions= method.direction_gen(n)
     step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
@@ -103,28 +101,27 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     lower= problem.lower
     upper = problem.upper
     f = problem.objective
-    dim = problem.dimension 
     # Get the directions for this iteration
     state.k += 1
-    directions = state.directions.directions
+    directions = state.directions.directions #Matrix each column is vector to add to the current solution
 
     # Set up order vector from which we will take the directions after possibly shuffling it
     order = collect(1:size(directions)[2])
     if method.random_dir_order
-        shuffle!(order)
+        shuffle!(order) #reorder the vector
     end
-
     # Check all directions to find a better point; default is that no one is found.
     found_better = false
     candidate = zeros(state.n, 1)
-    f_candidate=Inf
+    f_candidate = Inf
+    nbrSim=0
     # Loop over directions until we find an improvement (or there are no more directions to check).
     for direction in order
         candidate = round.(state.x + state.step_size .* directions[:, direction])
         #check if the new point in inbounds
         check_in_bounds(upper, lower, candidate)
         f_candidate = f(candidate)
-
+        nbrSim+=1
         if f_candidate<state.xfitness
             found_better = true
             break
@@ -139,6 +136,14 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
         state.step_size *= method.step_size_phi
     end
     state.step_size = min(state.step_size, method.step_size_max* minimum(upper.-lower))
-    state.x , state.xfitness
+    state.x , state.xfitness, nbrSim 
 end
 
+function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, archive)
+    initial_x = archive.x[argmin(archive.fit)]
+    n= length(initial_x)
+    directions= method.direction_gen(n)
+    step_size = calc_initial_step_size(problem.lower, problem.upper, method.step_size_factor)
+    GeneratingSetSearcherState(directions, n , 0, step_size, copy(initial_x),
+    minimum(archive.fit)), 1
+end
