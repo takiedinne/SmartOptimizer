@@ -1,2 +1,7 @@
 {
+    "editor.defaultFormatter": "julialang.language-julia",
+    "editor.tabCompletion": "on",
+    "julia.useProgressFrontend": true,
+    "julia.lint.call": false,
+    
 }

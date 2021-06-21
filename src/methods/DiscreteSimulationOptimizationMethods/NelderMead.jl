@@ -255,13 +255,13 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     state.nm_x = nmobjective(state.f_simplex, n, m)
     state.iteration+=1
     
-    copyto!(state.x_lowest, state.simplex[state.i_order[1]])
+    #=copyto!(state.x_lowest, state.simplex[state.i_order[1]])
     copyto!(state.x_second_highest, state.simplex[state.i_order[n]])
     copyto!(state.x_highest, state.simplex[state.i_order[m]])
 
     state.f_lowest = state.f_simplex[state.i_order[1]]
     f_second_highest = state.f_simplex[state.i_order[n]]
-    f_highest = state.f_simplex[state.i_order[m]]
+    f_highest = state.f_simplex[state.i_order[m]]=#
 
     state.x_lowest, state.f_lowest, nbrSim
 end

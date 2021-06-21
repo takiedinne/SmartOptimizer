@@ -1,13 +1,12 @@
-const c1 = 2
-const c2 = 2
-const  w =  1
-
 struct ParticleSwarm <: LowLevelHeuristic
     method_name::String
     n_particles::Int
+    c1 
+    c2 
+    w 
 end
 
-ParticleSwarm(;n_particles = 0) = ParticleSwarm("Particle Swarm", n_particles)
+ParticleSwarm(;n_particles = 0, c1 = 2, c2 = 2, w = 1) = ParticleSwarm("Particle Swarm", n_particles, c1, c2, w)
 
 mutable struct ParticleSwarmState{Tx,T} <:State
     x::Tx
@@ -44,7 +43,7 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
     X = Array{T,2}(undef, n, n_particles)
     V = Array{Float64,2}(undef, n, n_particles)
     X_best = Array{T,2}(undef, n, n_particles)
-    dx = zeros(T, n)
+    
     score = zeros( n_particles)
     x = copy(problem.x_initial)
     best_score = zeros(n_particles)
@@ -60,7 +59,7 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
         ww = upper - lower
         limit_search_space= true
     end
-    for i in 1: method.n_particles
+    for i in 2:method.n_particles
         tmp= copy(problem.x_initial)
         random_x!(tmp, n, upper=upper, lower= lower)
         X[:,i] = tmp
@@ -84,9 +83,9 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
         x,
         score[1],
         0,
-        c1,
-        c2,
-        w,
+        method.c1,
+        method.c2,
+        method.w,
         limit_search_space,
         X,
         V,
@@ -105,14 +104,10 @@ function housekeeping!(score, best_score, X, X_best, best_point,
     for i in 1:n_particles
         if score[i] <= best_score[i]
             best_score[i] = score[i]
-            for k in 1:n
-                X_best[k, i] = X[k, i]
-            end
+            X_best[:, i] = X[:, i]
             if score[i] <= F
-                for k in 1:n
-                  	best_point[k] = X[k, i]
-                end
-              	F = score[i]
+                best_point = X[:, i]
+            	F = score[i]
             end
         end
     end
@@ -174,14 +169,13 @@ function get_swarm_state(X::AbstractArray{Tx}, score, best_point, previous_state
     n, n_particles = size(X)
     f_best, i_best = findmin(score)
     d = zeros(n_particles)
+    println(Tx)
     for i in 1:n_particles
-        dd = Tx(0.0)
+        dd = UInt128(0)
         for k in 1:n_particles
-            for dim in 1:n
-                @inbounds ddd = (X[dim, i] - X[dim, k])
-                dd += ddd^2
-            end
+            @show dd += evaluate(SqEuclidean(), X[:, i], X[:, k] )
         end
+        #println("befor sqrt dd is : ", dd)
         d[i] = sqrt(dd)
     end
     dg = d[i_best]
@@ -443,9 +437,9 @@ function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
         x,
         score[1],
         0,
-        c1,
-        c2,
-        w,
+        method.c1,
+        method.c2,
+        method.w,
         limit_search_space,
         X,
         V,

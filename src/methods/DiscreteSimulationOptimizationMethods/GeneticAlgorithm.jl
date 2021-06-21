@@ -82,7 +82,7 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     population = state.population
     
     offspring = similar(population)#initiate a array of the same size of population with undef values
-
+    
     # Select offspring
     selected = selection(state.fitpop, populationSize) # select  condidate solution with roulette procedure it may contain replications
 
@@ -127,10 +127,9 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     #return the best values
     state.x , state.x_fitness, method.populationSize
 end
-
 function create_state_for_HH(method::GA, problem::Problem, archive)
     N = problem.dimension
-    fitness = zeros(method.populationSize)
+    
     # setup state values
     eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
     population= copy(archive)

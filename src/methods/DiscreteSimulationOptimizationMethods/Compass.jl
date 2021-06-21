@@ -137,12 +137,7 @@ function create_state_for_HH(method::COMPASS_Searcher, problem::Problem{T}, arch
     V=DataFrame(:x=>[],:addSimulation=>Int[],
                     :NumberSimulationDone=>Int[], :meanSampling=>[])# visited solutions List
     
-    addSim=method.SimulationAllocationRule(method,0)
-    fit_sum=0
-    #=for i in 1: addSim
-        fit_sum += problem.objective(xBestArchive)
-    end
-    push!(V,(xBestArchive,0,addSim,fit_sum/addSim))=#
+    
     push!(V,(xBestArchive,0,1,minimum(archive.fit)))
     PromosingArea=[]
     # here we initialise the promosing area 

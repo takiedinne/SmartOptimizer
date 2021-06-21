@@ -68,6 +68,8 @@ mutable struct GeneratingSetSearcherState{T} <: State
     step_size::Float64           # current step size
     x::AbstractArray{T,1}
     xfitness::Float64
+    x_best::AbstractArray{T,1}
+    xfitness_best::Float64
 end
 function initial_state(method::GeneratingSetSearcher, problem::Problem{T}) where {T<:Number}
     lower= problem.lower
@@ -77,7 +79,8 @@ function initial_state(method::GeneratingSetSearcher, problem::Problem{T}) where
     n= length(initial_x)
     directions= method.direction_gen(n)
     step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
-    GeneratingSetSearcherState(directions, n , 0, step_size, copy(initial_x), objfun(initial_x))
+    f= objfun(initial_x)
+    GeneratingSetSearcherState(directions, n , 0, step_size, copy(initial_x), f, copy(initial_x), f)
 end
 
 function check_in_bounds(upper, lower, x)
@@ -98,13 +101,20 @@ function check_in_bounds(upper, lower, x)
 end
 
 function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, iteration::Int, state::GeneratingSetSearcherState) where {T}
-    lower= problem.lower
+    nbrSim = 0
+    lower = problem.lower
     upper = problem.upper
     f = problem.objective
     # Get the directions for this iteration
     state.k += 1
     directions = state.directions.directions #Matrix each column is vector to add to the current solution
-
+    if state.step_size < 1
+        # Restart from a random point because it converged to a local minimum
+        random_x!(state.x, length(state.x), upper= upper, lower= lower)
+        state.xfitness = f(state.x)
+        nbrSim += 1
+        state.step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
+    end
     # Set up order vector from which we will take the directions after possibly shuffling it
     order = collect(1:size(directions)[2])
     if method.random_dir_order
@@ -114,7 +124,7 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     found_better = false
     candidate = zeros(state.n, 1)
     f_candidate = Inf
-    nbrSim=0
+    
     # Loop over directions until we find an improvement (or there are no more directions to check).
     for direction in order
         candidate = round.(state.x + state.step_size .* directions[:, direction])
@@ -132,11 +142,15 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
         state.x = candidate
         state.xfitness = f_candidate
         state.step_size *= method.step_size_gamma
+        if f_candidate < state.xfitness_best
+            state.x_best = candidate
+            state.xfitness_best = f_candidate
+        end
     else
         state.step_size *= method.step_size_phi
     end
     state.step_size = min(state.step_size, method.step_size_max* minimum(upper.-lower))
-    state.x , state.xfitness, nbrSim 
+    state.x_best , state.xfitness_best, nbrSim 
 end
 
 function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, archive)
@@ -144,6 +158,7 @@ function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, ar
     n= length(initial_x)
     directions= method.direction_gen(n)
     step_size = calc_initial_step_size(problem.lower, problem.upper, method.step_size_factor)
+    f = minimum(archive.fit)
     GeneratingSetSearcherState(directions, n , 0, step_size, copy(initial_x),
-    minimum(archive.fit)), 1
+    f, copy(initial_x), f), 1
 end
