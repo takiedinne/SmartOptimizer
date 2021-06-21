@@ -1,24 +1,29 @@
 function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
+  fit_historic=[]
   iteration = 1
   converged = false
+  trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
 
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
-
+  
+  push!(fit_historic,f_cur)
   # Start timing now
   t1 = time()
-  lowLevelHeuristics= loadAllLLH()
-  state = initial_HHstate(method, problem)
+  
+  HHstate = initial_HHstate(method, problem)
 
   while true
-    LLHs = selectLLH(method, lowLevelHeuristics, problem, iteration, state)
-   
-    performances = applyLLHs!(method, LLHs, problem, iteration, state)
+    println(method.method_name," iteration: ", iteration)
+    x_cur, f_cur = update_HHState!(method, problem, HHstate, iteration)
     
-    learningFunction(method, LLHs, problem, iteration, state, performances)
     if ( iteration >= options.max_iterations)
       break
     end
+    #=if iteration % 10 == 0 
+      #plot the Results
+      display(plot(1:(iteration+1), fit_historic))
+    end=#
     iteration += 1
   end
 
@@ -37,42 +42,44 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   )
 end
 
-function HH_optimize(method::LowLevelHeuristic, problem::Problem{T}) where {T<:Number}
-  return optimize(method, problem, Options())
+function HH_optimize(method::HyperHeuristic, problem::Problem{T}) where {T<:Number}
+  return HH_optimize(method, problem, Options())
 end
 
 function loadAllLLH()
-  methods= []
-  push!(methods, [GA(), 0, x, Inf])
-  push!(methods, [HookeAndJeeves(), 0, x, Inf])
-  push!(methods, [NelderMead(), 0, x, Inf])
-  #push!(methods, [OCBA(), 0, x, Inf])
-  push!(methods, [ParticleSwarm(), 0, x, Inf])
-  push!(methods, [SimulatedAnnealing(), 0, x, Inf])
-  push!(methods, [StochasticComparison(), 0, x, Inf])
-  push!(methods, [StochasticRuler(), 0, x, Inf])
-  push!(methods, [TabuSearch(), 0, x, Inf])
-  push!(methods, [GeneratingSetSearcher(), 0, x, Inf])
-  push!(methods, [COMPASS_Searcher(), 0, x, Inf])
+  methods= Array{LowLevelHeuristic,1}()
+  push!(methods, GA())
+  push!(methods, HookeAndJeeves())
+  push!(methods, NelderMead())
+  push!(methods, ParticleSwarm())
+  push!(methods, SimulatedAnnealing())
+  push!(methods, StochasticComparison())
+  push!(methods, StochasticRuler())
+  push!(methods, TabuSearch())
+  push!(methods, GeneratingSetSearcher())
+  push!(methods, COMPASS_Searcher())
   return methods
 end
 
 function apply_LLH!(LLHs, problem::Problem, phaseSize::Integer, HHState::HH_State)
-  performances=[]
+  performances=Array{PerformanceFactors,1}()
   newSolutions=[]
   for LLH in LLHs
-    state=create_state_for_HH()# we'll see how this  function works after
+    nbrSim=0
+    state, nbrSim = create_state_for_HH(LLH, problem, HHState.archive)# we'll see how this  function works after
     prev_fit=HHState.x_fit
     current_fit = HHState.x_fit
     current_x =HHState.x
-    nbrSim=0
+    
     #start timing for LLH monitoring
+    println(LLH.method_name, " is applied to ", current_x, " ", current_fit)
     CPUTime =time()
     for i in 1:phaseSize
-      current_x, current_fit, lastnbrSim = update_state!(LLH, problem, iteration, state)
+      current_x, current_fit, lastnbrSim = update_state!(LLH, problem, i, state)
       nbrSim += lastnbrSim
     end
     CPUTime=time()-CPUTime
+    println("Results: ", current_x, " ", current_fit)
     # create the performance struct
     Δfitness= current_fit - prev_fit
     performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
@@ -108,14 +115,29 @@ function get_solution_from_archive(archive, problem::Problem, nbr_of_solutions::
   end
 end
 
+function update_archive!(method::HyperHeuristic, state::HH_State, newSolution)
+  # we assume that the archive will maintains n best found solution
+  if newSolution[1] in state.archive.x 
+    return
+  end
+  if length(state.archive) < method.archiveSize
+    #here we add directely the new solution
+    push!(state.archive, newSolution)
+  elseif newSolution[2] < maximum(state.archive.fit)
+    #here we remplace te worstest solution
+    state.archive[argmax(state.archive.fit),:] = newSolution    
+  end
+end
+
 function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
+  fit_historic=[]
   iteration = 1
   converged = false
   trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
   
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
-
+  push!(fit_historic,f_cur)
   if options.store_trace
     # Set up automatic tracking of objective function evaluations
     trace = create_trace(method)
@@ -132,7 +154,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
     println(method.method_name," iteration: ", iteration)
     x_cur, f_cur, nbrSim = update_state!(method, problem, iteration, state)
     nbrTotalSim += nbrSim
-    
+    push!(fit_historic,f_cur)
     if options.store_trace
       trace!(method, trace, iteration, x_cur, f_cur, options, state)
     end
@@ -145,11 +167,18 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
 
     copy!(x_prev, x_cur)
     f_prev = f_cur
+   #= if iteration % 20 == 0 
+      #plot the Results
+      display(plot(1:(iteration+1), fit_historic))
+    end=#
     iteration += 1
   end
 
   elapsed_time = time() - t1
-
+  anim = @animate for i ∈ 1:(iteration+1)
+      plot(1:i, fit_historic[1:i], label= method.method_name)
+  end every 10
+  gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\",method.method_name,".gif"), fps = 10)
   return Results(
     method.method_name,
     problem.x_initial,

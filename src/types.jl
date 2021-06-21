@@ -14,7 +14,7 @@ end
 function Options(;
   ϵ_f = 1e-16,
   ϵ_x = 1e-16,
-  max_iterations = 5,
+  max_iterations = 100,
   store_trace = false)
   return Options(
     ϵ_f,
@@ -97,13 +97,13 @@ struct PerformanceFactors
   #here you can add another factors
 end
 function Base.show(io::IO, results::Results)
-  println("Optimization Results")
-  println(" * Algorithm: %s", results.method_name)
-  println(" * Minimizer: [",join(results.minimizer, ","),"]")
-  println(" * Minimum: ", results.minimum)
-  println(" * Iterations: ", results.iterations)
-  println(" * Converged: ", results.converged ? "true" : "false")
-  println(" * Elapsed time: ",results.elapsed_time," seconds") 
+  println(io, "Optimization Results")
+  println(io, " * Algorithm: ", results.method_name)
+  println(io, " * Minimizer: [",join(results.minimizer, ","),"]")
+  println(io, " * Minimum: ", results.minimum)
+  println(io, " * Iterations: ", results.iterations)
+  println(io, " * Converged: ", results.converged ? "true" : "false")
+  println(io, " * Elapsed time: ",results.elapsed_time," seconds") 
   if results.trace !== nothing
     println(" * Objective Function Calls: ",length(results.trace.evaluations))
   end

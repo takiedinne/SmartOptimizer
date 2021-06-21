@@ -1,14 +1,15 @@
 module SmartOptimizer
-    using DataFrames: Vector
-using Evolutionary: minimum, population_size
-using Base: Real, Integer, Float64
-    using LinearAlgebra
+    using Evolutionary: rand
+using Plots: length
+using LinearAlgebra
     using Random
     using DataFrames
     using Evolutionary
     using Statistics
     using Distributions
     using Combinatorics
+    using Plots, StatsPlots
+    using Distances
 
     include("types.jl")
     include("api.jl")
@@ -17,12 +18,16 @@ using Base: Real, Integer, Float64
     include("methods/DiscreteSimulationOptimizationMethods/GeneticAlgorithm.jl")
     include("methods/DiscreteSimulationOptimizationMethods/HookeJeeves.jl")
     include("methods/DiscreteSimulationOptimizationMethods/NelderMead.jl")
-    include("methods/DiscreteSimulationOptimizationMethods/OCBA.jl")
+    include("methods/OtherMethods/OCBA.jl")
     include("methods/DiscreteSimulationOptimizationMethods/ParticleSwarm.jl")
     include("methods/DiscreteSimulationOptimizationMethods/SimulatedAnnealing.jl")
     include("methods/DiscreteSimulationOptimizationMethods/StochasticComparison.jl")
     include("methods/DiscreteSimulationOptimizationMethods/StochasticRuler.jl")
     include("methods/DiscreteSimulationOptimizationMethods/TabuSearch.jl")
+    #the hyper heuristic methods
+    include("HyperHeuristics/moveAcceptance.jl")
+    include("HyperHeuristics/LearningFunctions.jl")
+    include("HyperHeuristics/Epsilon-greedy.jl")
     export
         optimize,
         Problem,
@@ -37,5 +42,8 @@ using Base: Real, Integer, Float64
         SimulatedAnnealing,
         StochasticComparison,
         StochasticRuler,
-        TabuSearch
+        TabuSearch,
+        #hyper heuristic
+        HH_optimize,
+        ϵGreedy
 end
