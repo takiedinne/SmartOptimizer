@@ -173,7 +173,7 @@ function get_swarm_state(X::AbstractArray{Tx}, score, best_point, previous_state
     for i in 1:n_particles
         dd = UInt128(0)
         for k in 1:n_particles
-            @show dd += evaluate(SqEuclidean(), X[:, i], X[:, k] )
+            dd += evaluate(SqEuclidean(), X[:, i], X[:, k] )
         end
         #println("befor sqrt dd is : ", dd)
         d[i] = sqrt(dd)
