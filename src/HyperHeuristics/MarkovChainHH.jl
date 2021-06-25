@@ -1,11 +1,11 @@
 struct MarkovChainHH <:HyperHeuristic
     method_name::String
     episodeSize::Integer
-    learner::Learner
+    learningMachanism::LearningMethod
     moveAcceptance::Function
     archiveSize::Integer
 end
-MarkovChainHH(;es=1, LF= reward_punish_learner(), MA=NaiveAcceptance, AS=10) = MarkovChainHH("Marcov chain hyper heuristic",
+MarkovChainHH(;es=1, LF= reward_punish_LM(), MA=NaiveAcceptance, AS=10) = MarkovChainHH("Marcov chain hyper heuristic",
                                                                     es, LF, MA, AS);
                                                                     
 mutable struct MarkovChainState{T} <: HH_State
@@ -65,7 +65,7 @@ function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::Marko
     end
     
     #learning mechanism
-    learn!(method.learner, performance.ΔFitness, HHState.currentLLHIndex,
+    learn!(method.learningMachanism, performance.ΔFitness, HHState.currentLLHIndex,
             view(HHState.transitionMatrix, HHState.previousLLHIndex, :))
     show(stdout, "text/plain", HHState.transitionMatrix)
     println()

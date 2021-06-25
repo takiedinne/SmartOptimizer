@@ -124,7 +124,7 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     minfit, fitidx = findmin(state.fitpop)
     state.x = population[fitidx]
     state.x_fitness = state.fitpop[fitidx]
-    #return the best values
+    #return the best values and it is the current
     state.x , state.x_fitness, method.populationSize
 end
 function create_state_for_HH(method::GA, problem::Problem, archive)

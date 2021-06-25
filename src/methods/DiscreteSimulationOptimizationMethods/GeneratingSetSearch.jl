@@ -150,7 +150,7 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
         state.step_size *= method.step_size_phi
     end
     state.step_size = min(state.step_size, method.step_size_max* minimum(upper.-lower))
-    state.x_best , state.xfitness_best, nbrSim 
+    state.x , state.xfitness, nbrSim 
 end
 
 function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, archive)

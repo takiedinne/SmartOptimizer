@@ -14,7 +14,8 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   HHstate = initial_HHstate(method, problem)
 
   while true
-    println(method.method_name," iteration: ", iteration)
+    #println(method.method_name," iteration: ", iteration)
+    
     x_cur, f_cur = update_HHState!(method, problem, HHstate, iteration)
     
     if ( iteration >= options.max_iterations)
@@ -32,8 +33,8 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   return Results(
     method.method_name,
     problem.x_initial,
-    x_cur,
-    f_cur,
+    HHstate.x_best,
+    HHstate.x_best_fit,
     iteration,
     converged,
     options.ϵ_x,
@@ -51,19 +52,19 @@ function loadAllLLH()
   push!(methods, GA())
   push!(methods, HookeAndJeeves())
   push!(methods, NelderMead())
-  push!(methods, ParticleSwarm())
+  #=push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
   push!(methods, StochasticComparison())
   push!(methods, StochasticRuler())
   push!(methods, TabuSearch())
   push!(methods, GeneratingSetSearcher())
-  push!(methods, COMPASS_Searcher())
+  push!(methods, COMPASS_Searcher())=#
   return methods
 end
 
-function apply_LLH!(LLHs, problem::Problem, phaseSize::Integer, HHState::HH_State)
+function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_State) where T
   performances=Array{PerformanceFactors,1}()
-  newSolutions=[]
+  newSolutions=Array{Tuple{Array{T,1}, Float64},1}()
   for LLH in LLHs
     nbrSim=0
     state, nbrSim = create_state_for_HH(LLH, problem, HHState.archive)# we'll see how this  function works after
@@ -79,12 +80,12 @@ function apply_LLH!(LLHs, problem::Problem, phaseSize::Integer, HHState::HH_Stat
       nbrSim += lastnbrSim
     end
     CPUTime=time()-CPUTime
-    println("Results: ", current_x, " ", current_fit)
+    #println("Results: ", current_x, " ", current_fit)
     # create the performance struct
     Δfitness= current_fit - prev_fit
     performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
     push!(performances, performance)
-    push!(newSolutions, [current_x, current_fit])
+    push!(newSolutions, (current_x, current_fit))
   end
   newSolutions, performances
 end
@@ -167,10 +168,10 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
 
     copy!(x_prev, x_cur)
     f_prev = f_cur
-   #= if iteration % 20 == 0 
+    if iteration % 20 == 0 
       #plot the Results
       display(plot(1:(iteration+1), fit_historic))
-    end=#
+    end
     iteration += 1
   end
 
@@ -178,7 +179,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
   anim = @animate for i ∈ 1:(iteration+1)
       plot(1:i, fit_historic[1:i], label= method.method_name)
   end every 10
-  gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\",method.method_name,".gif"), fps = 10)
+  gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\",method.method_name,"_currentSolution.gif"), fps = 10)
   return Results(
     method.method_name,
     problem.x_initial,

@@ -1,7 +1,6 @@
 module SmartOptimizer
-    using Evolutionary: rand
-using Plots: length
-using LinearAlgebra
+    
+    using LinearAlgebra
     using Random
     using DataFrames
     using Evolutionary
@@ -28,6 +27,7 @@ using LinearAlgebra
     include("HyperHeuristics/moveAcceptance.jl")
     include("HyperHeuristics/LearningFunctions.jl")
     include("HyperHeuristics/Epsilon-greedy.jl")
+    include("HyperHeuristics/MarkovChainHH.jl")
     export
         optimize,
         Problem,
@@ -45,5 +45,6 @@ using LinearAlgebra
         TabuSearch,
         #hyper heuristic
         HH_optimize,
-        ϵGreedy
+        ϵGreedy,
+        MarkovChainHH
 end

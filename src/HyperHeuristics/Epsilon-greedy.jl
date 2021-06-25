@@ -6,14 +6,14 @@ mutable struct ϵGreedy <: HyperHeuristic
     ϵ::Real
     episodeSize::Integer # must be in all the HH
     selectionFunction::Function
-    learningFunction::Function
-    adaptEpsilonFunc::Function
+    learningMechanism::LearningMethod
+    adaptEpsilonFunc::Function # in the first step i will not use this functionalty
     moveAcceptance::Function
     archiveSize::Integer
 end
 
 
-ϵGreedy(;ϵ=0.5, episodeSize=1, SF=Epsilon_greedy_selection_mechanism ,LF=fix_reward_punish, aE=AdaptEpsilon, MA=AllMoves, AS=10) =
+ϵGreedy(;ϵ=0.5, episodeSize=1, SF=Epsilon_greedy_selection_mechanism ,LF=reward_punish_LM(), aE=AdaptEpsilon, MA=NaiveAcceptance, AS=10) =
  ϵGreedy("ϵ-Greedy",ϵ, episodeSize, SF, LF, aE, MA, AS)
 
 mutable struct ϵGreedyState{T} <: HH_State
@@ -64,22 +64,26 @@ function update_HHState!(method::ϵGreedy, problem::Problem, HHState::ϵGreedySt
     #apply the selected LLH 
     #apply_LLH! return array of tuple (new solution_i for LLH_i, fit_i) and array of performance  
     newSolution, performance = apply_LLH!([currentLLH], problem, method.episodeSize, HHState)
+    newSolution, performance = newSolution[1], performance[1] # cause we've aoolied only one LLH
+   
     #new solution is tuple of solution and fitness
     #move acceptance
     if method.moveAcceptance(newSolution, [HHState.x, HHState.x_fit])
-        HHState.x, HHState.x_fit = newSolution[1]
+        HHState.x, HHState.x_fit = newSolution
         #check if it is a new best solution
-        if HHState.x_best_fit > newSolution[1][2]
-            HHState.x_best, HHState.x_best_fit = newSolution[1]
+        if HHState.x_best_fit > newSolution[2]
+            HHState.x_best, HHState.x_best_fit = newSolution
         end
     end
 
     #Selection of the next LLH this is is useful if we use SARSA Epsilon_greedy_selection_mechanism
     HHState.nextLLHIndex = method.selectionFunction(method, HHState)
     # for learning function we need the HHstate, performance resulting after applying the LLh and the LLHs applied
-    method.learningFunction(HHState, performance, [currentLLH])
+    learn!(method.learningMechanism, performance.ΔFitness, HHState.currentLLHIndex,HHState.scores, 
+                     HHState.scores)
+    println(HHState.scores)
     HHState.currentLLHIndex = HHState.nextLLHIndex
     #update the archive
-    update_archive!(method, HHState, newSolution[1])
+    update_archive!(method, HHState, newSolution)
     HHState.x , HHState.x_fit
 end 
