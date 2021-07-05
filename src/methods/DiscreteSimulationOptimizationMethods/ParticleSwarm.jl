@@ -9,8 +9,8 @@ end
 ParticleSwarm(;n_particles = 0, c1 = 2, c2 = 2, w = 1) = ParticleSwarm("Particle Swarm", n_particles, c1, c2, w)
 
 mutable struct ParticleSwarmState{Tx,T} <:State
-    x::Tx
-    f_x
+    x::Tx #current best solution
+    f_x # current best fitness
     iteration::Int
     c1::T # Weight variable; currently not exposed to users
     c2::T # Weight variable; currently not exposed to users
@@ -169,7 +169,6 @@ function get_swarm_state(X::AbstractArray{Tx}, score, best_point, previous_state
     n, n_particles = size(X)
     f_best, i_best = findmin(score)
     d = zeros(n_particles)
-    println(Tx)
     for i in 1:n_particles
         dd = UInt128(0)
         for k in 1:n_particles

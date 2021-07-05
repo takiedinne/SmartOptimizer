@@ -24,6 +24,7 @@ mutable struct MarkovChainState{T} <: HH_State
     previousLLHIndex::Integer
     nextLLHIndex::Integer # for SARSA learning
 end
+
 function initial_HHstate(method::MarkovChainHH, problem::Problem)
     x= problem.x_initial
     f= problem.objective(x)
@@ -35,7 +36,12 @@ function initial_HHstate(method::MarkovChainHH, problem::Problem)
     push!(archive,[x,f])
     previousLLHIndex= rand(1:n) #choose randomly one LLH to be applie at the first stage
     nextLLHIndex = roulette(transitionMatrix[previousLLHIndex,:],1)[1] #choose the next one 
-    HHState = MarkovChainState( x,
+    #initiate the learning mechanism
+    if typeof(method.learningMachanism) != reward_punish_LM{Float64}
+        #here we initiate the Q_table
+        method.learningMachanism.Q_Table= ones(n,n)
+    end
+    MarkovChainState( x,
                 copy(x),
                 f,
                 f,
@@ -45,10 +51,12 @@ function initial_HHstate(method::MarkovChainHH, problem::Problem)
                 nextLLHIndex,#current
                 previousLLHIndex,#previous
                 nextLLHIndex #we need this for SARSA if i would Apply it
-                          )
+                          ), 1#nbr of simulation occured
 end
 
 function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::MarkovChainState, iteration)
+    
+    HHState.currentLLHIndex = roulette(method.learningMachanism.scores,1)[1]
     currentLLH= HHState.LLHs[HHState.currentLLHIndex] 
     #apply the selected LLH 
     #apply_LLH! return array of tuple (new solution_i for LLH_i, fit_i) and array of performance  
@@ -65,17 +73,18 @@ function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::Marko
     end
     
     #learning mechanism
-    learn!(method.learningMachanism, performance.ΔFitness, HHState.currentLLHIndex,
-            view(HHState.transitionMatrix, HHState.previousLLHIndex, :))
-    show(stdout, "text/plain", HHState.transitionMatrix)
-    println()
+    """
+     here i model the markov chain process as set od states (LLHs) and actions (appling one LLH)
+    """
+    learn!(method.learningMachanism, performance.ΔFitness, HHState.previousLLHIndex,
+            HHState.currentLLHIndex, HHState.currentLLHIndex)
+    #=show(stdout, "text/plain", HHState.transitionMatrix)
+    println()=#
     #select the next LLH to apply
     HHState.previousLLHIndex = HHState.currentLLHIndex
-    HHState.currentLLHIndex = roulette(HHState.transitionMatrix[HHState.currentLLHIndex, :],1)[1]
-
     #update the archive
     update_archive!(method, HHState, newSolution)
-    HHState.x , HHState.x_fit
+    HHState.x , HHState.x_fit, performance.numSimRun
 end
 
 function fix_reward_punish(HHstate::MarkovChainState, performances::PerformanceFactors, LLHs)
@@ -88,4 +97,4 @@ function fix_reward_punish(HHstate::MarkovChainState, performances::PerformanceF
         HHstate.transitionMatrix[HHstate.previousLLHIndex, HHstate.currentLLHIndex] -= punish
     end
 end
- 
+

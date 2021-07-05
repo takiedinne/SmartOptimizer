@@ -69,7 +69,7 @@ function update_state!(method::StochasticRuler, problem::Problem{T}, iteration::
        
     end
     
-    state.x, state.f_x, nbrSim
+    state.x_current, state.f_current, nbrSim
 end
 function has_converged(method::StochasticRuler, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
     false

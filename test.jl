@@ -3,6 +3,9 @@ include("simulations/GG1K_simulation.jl")
 using Main.SmartOptimizer
 
 p = Problem(sim_GG1K,false,10, upper=Integer.(ones(10).*20), lower= Integer.(ones(10)))
+#=
+m=MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance, LF = Main.SmartOptimizer.QLearning_LM())
+r = HH_optimize(m,p)=#
 
-m=ϵGreedy(LF=Main.SmartOptimizer.QLearning_LM())
-HH_optimize(m,p)
+mSC= COMPASS_Searcher()
+optimize(mSC, p)

@@ -93,7 +93,7 @@ function update_state!(method::TabuSearch, problem::Problem{T}, iteration::Int, 
         end
     end 
 
-    state.x, state.f_x, nbrSim
+    state.x_current, state.f_x_current, nbrSim
 end
 
 function create_state_for_HH(mathod::TabuSearch, problem::Problem, archive)

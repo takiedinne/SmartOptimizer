@@ -1,35 +1,43 @@
 function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
-  fit_historic=[]
+  nbrTotalSim = 0
+  fit_historic = []
   iteration = 1
   converged = false
   trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
 
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
-  
+  nbrTotalSim += 1
   push!(fit_historic,f_cur)
   # Start timing now
   t1 = time()
   
-  HHstate = initial_HHstate(method, problem)
-
+  HHstate, nbrOfRuns = initial_HHstate(method, problem)
+  nbrTotalSim += nbrOfRuns
   while true
-    #println(method.method_name," iteration: ", iteration)
-    
-    x_cur, f_cur = update_HHState!(method, problem, HHstate, iteration)
-    
+    x_cur, f_cur, nbrOfRuns = update_HHState!(method, problem, HHstate, iteration)
+    nbrTotalSim += nbrOfRuns
+    push!(fit_historic,f_cur)
     if ( iteration >= options.max_iterations)
       break
     end
-    #=if iteration % 10 == 0 
+    #=if iteration % 20 == 0 
       #plot the Results
       display(plot(1:(iteration+1), fit_historic))
     end=#
     iteration += 1
+    
   end
 
   elapsed_time = time() - t1
-
+  
+  #=anim = @animate for i ∈ 1:(iteration+1)
+      plot(1:i, fit_historic[1:i], label= method.method_name)
+  end every 10
+  gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\",method.method_name,"_",method.moveAcceptance,"_",method.learningMachanism,".gif"), fps = 20)
+=#
+  plot(1:length(fit_historic), fit_historic, label= string(method.method_name, "-", method.learningMachanism.method_name,"-", method.moveAcceptance))
+  savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\",method.method_name,"_",method.moveAcceptance,"_",method.learningMachanism.method_name,".png"))
   return Results(
     method.method_name,
     problem.x_initial,
@@ -40,7 +48,7 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
     options.ϵ_x,
     elapsed_time,
     trace
-  )
+  ), nbrTotalSim
 end
 
 function HH_optimize(method::HyperHeuristic, problem::Problem{T}) where {T<:Number}
@@ -52,13 +60,13 @@ function loadAllLLH()
   push!(methods, GA())
   push!(methods, HookeAndJeeves())
   push!(methods, NelderMead())
-  #=push!(methods, ParticleSwarm())
+  push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
   push!(methods, StochasticComparison())
   push!(methods, StochasticRuler())
   push!(methods, TabuSearch())
   push!(methods, GeneratingSetSearcher())
-  push!(methods, COMPASS_Searcher())=#
+  push!(methods, COMPASS_Searcher())
   return methods
 end
 
@@ -168,18 +176,19 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
 
     copy!(x_prev, x_cur)
     f_prev = f_cur
-    if iteration % 20 == 0 
+   #= if iteration % 20 == 0 
       #plot the Results
       display(plot(1:(iteration+1), fit_historic))
-    end
+    end=#
     iteration += 1
   end
 
   elapsed_time = time() - t1
-  anim = @animate for i ∈ 1:(iteration+1)
+  #=anim = @animate for i ∈ 1:(iteration+1)
       plot(1:i, fit_historic[1:i], label= method.method_name)
   end every 10
   gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\",method.method_name,"_currentSolution.gif"), fps = 10)
+  =#
   return Results(
     method.method_name,
     problem.x_initial,
