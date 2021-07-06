@@ -7,5 +7,5 @@ p = Problem(sim_GG1K,false,10, upper=Integer.(ones(10).*20), lower= Integer.(one
 m=MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance, LF = Main.SmartOptimizer.QLearning_LM())
 r = HH_optimize(m,p)=#
 
-mSC= COMPASS_Searcher()
-optimize(mSC, p)
+m =TabuSearchHH()
+HH_optimize(m, p)

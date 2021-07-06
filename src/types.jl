@@ -14,7 +14,7 @@ end
 function Options(;
   ϵ_f = 1e-16,
   ϵ_x = 1e-16,
-  max_iterations = 1000,
+  max_iterations = 5,
   store_trace = false)
   return Options(
     ϵ_f,

@@ -28,6 +28,7 @@ module SmartOptimizer
     include("HyperHeuristics/LearningFunctions.jl")
     include("HyperHeuristics/Epsilon-greedy.jl")
     include("HyperHeuristics/MarkovChainHH.jl")
+    include("HyperHeuristics/TabuSearchHH.jl")
     export
         optimize,
         Problem,
@@ -46,5 +47,6 @@ module SmartOptimizer
         #hyper heuristic
         HH_optimize,
         ϵGreedy,
-        MarkovChainHH
+        MarkovChainHH,
+        TabuSearchHH
 end

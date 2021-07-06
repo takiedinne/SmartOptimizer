@@ -9,15 +9,15 @@ x=p.x_initial
 methods= DataFrame( abv=[], method=[], duration=[], x=[], fit=[], nbrSim=[] )
 
 #we do the first experiment with the fix rexard panishement
-push!(methods, ["MHH_FixR_OI", MarkovChainHH(MA=Main.SmartOptimizer.OnlyImprovement), 0, x, Inf, 0])
-push!(methods, ["MHH_FixR_AM", MarkovChainHH(MA=Main.SmartOptimizer.AllMoves), 0, x, Inf, 0])
-push!(methods, ["MHH_FixR_NM", MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance), 0, x, Inf, 0])
-push!(methods, ["MHH_SARSA_OI", MarkovChainHH(MA=Main.SmartOptimizer.OnlyImprovement, LF =Main.SmartOptimizer.SARSA_LM() ), 0, x, Inf, 0])
-push!(methods, ["MHH_SARSA_AM", MarkovChainHH(MA=Main.SmartOptimizer.AllMoves, LF =Main.SmartOptimizer.SARSA_LM()), 0, x, Inf, 0])
-push!(methods, ["MHH_SARSA_NM", MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance, LF =Main.SmartOptimizer.SARSA_LM()), 0, x, Inf, 0])
-push!(methods, ["MHH_QL_OI", MarkovChainHH(MA=Main.SmartOptimizer.OnlyImprovement, LF =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
-push!(methods, ["MHH_QL_AM", MarkovChainHH(MA=Main.SmartOptimizer.AllMoves, LF =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
-push!(methods, ["MHH_QL_NM", MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance, LF =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
+push!(methods, ["EGreedy_FixR_OI",ϵGreedy(MA=Main.SmartOptimizer.OnlyImprovement), 0, x, Inf, 0])
+push!(methods, ["EGreedy_FixR_AM", ϵGreedy(MA=Main.SmartOptimizer.AllMoves), 0, x, Inf, 0])
+push!(methods, ["EGreedy_FixR_NM", ϵGreedy(MA=Main.SmartOptimizer.NaiveAcceptance), 0, x, Inf, 0])
+push!(methods, ["EGreedy_SARSA_OI", ϵGreedy(MA=Main.SmartOptimizer.OnlyImprovement, LM =Main.SmartOptimizer.SARSA_LM() ), 0, x, Inf, 0])
+push!(methods, ["EGreedy_SARSA_AM", ϵGreedy(MA=Main.SmartOptimizer.AllMoves, LM =Main.SmartOptimizer.SARSA_LM()), 0, x, Inf, 0])
+push!(methods, ["EGreedy_SARSA_NM", ϵGreedy(MA=Main.SmartOptimizer.NaiveAcceptance, LM =Main.SmartOptimizer.SARSA_LM()), 0, x, Inf, 0])
+push!(methods, ["EGreedy_QL_OI", ϵGreedy(MA=Main.SmartOptimizer.OnlyImprovement, LM =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
+push!(methods, ["EGreedy_QL_AM", ϵGreedy(MA=Main.SmartOptimizer.AllMoves, LM =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
+push!(methods, ["EGreedy_QL_NM", ϵGreedy(MA=Main.SmartOptimizer.NaiveAcceptance, LM =Main.SmartOptimizer.QLearning_LM()), 0, x, Inf, 0])
 
 for i in 1:nrow(methods)
     method= methods[i, :method]
@@ -40,4 +40,4 @@ for i in 1:nrow(methods)
 end 
 select!(methods, Not(:method))
 
-CSV.write("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\MHH1000Iter.csv", methods)
+CSV.write("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\EpsilonGreedy\\EGreedy500Iter.csv", methods)

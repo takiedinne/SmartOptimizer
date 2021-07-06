@@ -1,7 +1,7 @@
 struct MarkovChainHH <:HyperHeuristic
     method_name::String
     episodeSize::Integer
-    learningMachanism::LearningMethod
+    learningMechanism::LearningMethod
     moveAcceptance::Function
     archiveSize::Integer
 end
@@ -37,9 +37,9 @@ function initial_HHstate(method::MarkovChainHH, problem::Problem)
     previousLLHIndex= rand(1:n) #choose randomly one LLH to be applie at the first stage
     nextLLHIndex = roulette(transitionMatrix[previousLLHIndex,:],1)[1] #choose the next one 
     #initiate the learning mechanism
-    if typeof(method.learningMachanism) != reward_punish_LM{Float64}
+    if typeof(method.learningMechanism) != reward_punish_LM{Float64}
         #here we initiate the Q_table
-        method.learningMachanism.Q_Table= ones(n,n)
+        method.learningMechanism.Q_Table= ones(n,n)
     end
     MarkovChainState( x,
                 copy(x),
@@ -56,7 +56,7 @@ end
 
 function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::MarkovChainState, iteration)
     
-    HHState.currentLLHIndex = roulette(method.learningMachanism.scores,1)[1]
+    HHState.currentLLHIndex = roulette(method.learningMechanism.scores,1)[1]
     currentLLH= HHState.LLHs[HHState.currentLLHIndex] 
     #apply the selected LLH 
     #apply_LLH! return array of tuple (new solution_i for LLH_i, fit_i) and array of performance  
@@ -76,7 +76,7 @@ function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::Marko
     """
      here i model the markov chain process as set od states (LLHs) and actions (appling one LLH)
     """
-    learn!(method.learningMachanism, performance.ΔFitness, HHState.previousLLHIndex,
+    learn!(method.learningMechanism, performance.ΔFitness, HHState.previousLLHIndex,
             HHState.currentLLHIndex, HHState.currentLLHIndex)
     #=show(stdout, "text/plain", HHState.transitionMatrix)
     println()=#
