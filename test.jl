@@ -1,11 +1,10 @@
 include("src/SmartOptimizer.jl")
-include("simulations/GG1K_simulation.jl")
+#include("simulations/GG1K_simulation.jl")
+include("simulations/BrainFuck/Brainfuck.jl")
+include("simulations/BrainFuck/fitnessFunctions.jl")
+using Main.Brainfuck
 using Main.SmartOptimizer
 
-p = Problem(sim_GG1K,false,10, upper=Integer.(ones(10).*20), lower= Integer.(ones(10)))
-#=
-m=MarkovChainHH(MA=Main.SmartOptimizer.NaiveAcceptance, LF = Main.SmartOptimizer.QLearning_LM())
-r = HH_optimize(m,p)=#
-
-m =TabuSearchHH()
+p = Problem(fitnessStr, false, 150, upper= ones(150).*8, lower=ones(150))
+m = TabuSearchHH(es=10)
 HH_optimize(m, p)

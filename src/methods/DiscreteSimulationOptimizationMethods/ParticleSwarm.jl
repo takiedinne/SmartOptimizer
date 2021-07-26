@@ -1,4 +1,4 @@
-struct ParticleSwarm <: LowLevelHeuristic
+mutable struct ParticleSwarm <: LowLevelHeuristic
     method_name::String
     n_particles::Int
     c1 
@@ -35,11 +35,11 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
     if 0 < method.n_particles < 3 
         @warn("Number of particles is set to 3 (minimum required)")
         method.n_particles = 3
-    elseif method.n_particles==0
+    elseif method.n_particles == 0
         # user did not define number of particles
-        n_particles = maximum([3, length(problem.x_initial)])
+        method.n_particles = maximum([3, length(problem.x_initial)])
     end
-
+    n_particles = method.n_particles
     X = Array{T,2}(undef, n, n_particles)
     V = Array{Float64,2}(undef, n, n_particles)
     X_best = Array{T,2}(undef, n, n_particles)
@@ -50,7 +50,7 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
     x_learn = copy(problem.x_initial)
 
     current_state = 0
-    score[1] = problem.objective(problem.x_initial)
+    score[1] = problem.objective(x)
     limit_search_space= false
     
     # if search space is limited, spread the initial population
@@ -59,11 +59,13 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
         ww = upper - lower
         limit_search_space= true
     end
-    for i in 2:method.n_particles
-        tmp= copy(problem.x_initial)
+    for i in 2:n_particles
+        tmp = copy(x)
         random_x!(tmp, n, upper=upper, lower= lower)
+        
         X[:,i] = tmp
         X_best[:,i] = X[:,i]
+
         if limit_search_space
             # initialise randomly positif or negative vitess that not execced 0.5 from the search space 
             V[:,i] = map(x->x * (rand() * 2 - 1) / 10, ww)
@@ -72,8 +74,8 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
         end
     end
     # crush the first inputs to be like initial x
-    X[:,1] = copy(problem.x_initial)
-    X_best[:,1] = copy(problem.x_initial)
+    X[:,1] = copy(x)
+    X_best[:,1] = copy(x)
     
     for i in 2:n_particles
         score[i] = problem.objective(X[:, i])
@@ -329,7 +331,6 @@ end
 function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::Int, state::ParticleSwarmState) where {T}
     nbrSim = 0   
     n = problem.dimension
-
     state.f_x = housekeeping!(state.score,
                             state.best_score,
                             state.X,
@@ -388,7 +389,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     collect(state.x), state.f_x, nbrSim
 end
 
-function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
+function create_state_for_HH(method::ParticleSwarm, problem::Problem, HHState::HH_State)
     nbrSim = 0
     n = length(problem.x_initial)
     upper = problem.upper
@@ -401,9 +402,11 @@ function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
         n_particles = maximum([3, length(problem.x_initial)])
     end
 
-    X_tmp, score, nbrSim = get_solution_from_archive(archive, problem, n_particles)
-    X= X_tmp[1]
-    for i in 2: length(X_tmp)
+    X_tmp, score, nbrSim = get_solution_from_archive(HHState.archive, problem, n_particles-1)
+    append!(X_tmp, [HHState.x])
+    append!(score, HHState.x_fit)
+    X = X_tmp[1]
+    for i in 2:length(X_tmp)
         X= hcat(X, X_tmp[i])
     end
 
@@ -411,9 +414,8 @@ function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
     X_best = copy(X)
     best_score = copy(score)
     
-    x = copy(archive.x[argmin(archive.fit)])
+    x = HHState.x
     x_learn = copy(x)
-
     current_state = 0
     limit_search_space= false
     
@@ -434,7 +436,7 @@ function create_state_for_HH(method::ParticleSwarm, problem::Problem, archive)
 
     ParticleSwarmState(
         x,
-        score[1],
+        HHState.x_fit,
         0,
         method.c1,
         method.c2,

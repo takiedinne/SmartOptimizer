@@ -25,7 +25,7 @@ mutable struct GA <: LowLevelHeuristic
     crossover::Function
     mutation::Function
 
-    GA(; populationSize::Int=5, crossoverRate::Float64=0.8, mutationRate::Float64=0.1,
+    GA(; populationSize::Int=10, crossoverRate::Float64=0.8, mutationRate::Float64=0.1,
         ɛ::Real=0.2, epsilon::Real=ɛ,
         selection::Function = roulette,
         crossover::Function = twopoint, mutation::Function = mutation_fun) =
@@ -125,18 +125,19 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     state.x = population[fitidx]
     state.x_fitness = state.fitpop[fitidx]
     #return the best values and it is the current
+    
     state.x , state.x_fitness, method.populationSize
 end
-function create_state_for_HH(method::GA, problem::Problem, archive)
+function create_state_for_HH(method::GA, problem::Problem, HHState::HH_State)
     N = problem.dimension
-    
     # setup state values
     eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
-    population= copy(archive)
+    population = DataFrame(x= [HHState.x], fit = [HHState.x_fit])
+    population= append!(population, HHState.archive)
     nbrSim = 0
-    if method.populationSize > nrow(archive)
+    if method.populationSize > nrow(HHState.archive)+1
         #we generate random solution to complet the solution
-        for i in 1:(method.populationSize- nrow(archive))
+        for i in 1:(method.populationSize - nrow(HHState.archive)-1)
             tmp=copy(population.x[1])
             random_x!(tmp, length(tmp), upper = problem.upper, lower = problem.lower)
             tmp_fit = problem.objective(tmp)
@@ -144,10 +145,9 @@ function create_state_for_HH(method::GA, problem::Problem, archive)
             nbrSim += 1
         end
     end
-
     sort!(population, [:fit])
     fitness =  population.fit[1:method.populationSize]
     population = population.x[1:method.populationSize]
     # setup initial state
-    GAState(N, eliteSize, fitness[1], fitness, copy(population[1]), population), nbrSim
+    GAState(N, eliteSize, HHState.x_fit, fitness, copy(HHState.x), population), nbrSim
 end

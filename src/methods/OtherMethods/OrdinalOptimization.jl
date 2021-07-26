@@ -115,7 +115,7 @@ function OrdinalOptimization(sim::Function, NbrVar::Int, UpBound::Int)
     X[1,:]
 end
 startTime=time()
-m=OrdinalOptimization(sim_GG1K,3,5)
+m=OrdinalOptimization(sim_GG1K,10,20)
 endTime=time()
 delay=(endTime-startTime)/60
 m

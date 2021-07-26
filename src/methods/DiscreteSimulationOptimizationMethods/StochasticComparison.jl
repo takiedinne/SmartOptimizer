@@ -76,8 +76,9 @@ function has_converged(method::StochasticComparison, x::Tuple{Array{T},Array{T}}
     false
 end
 
-function create_state_for_HH(method::StochasticComparison, problem::Problem, archive)
-    x, f = archive.x[argmin(archive.fit)], minimum(archive.fit)
+function create_state_for_HH(method::StochasticComparison, problem::Problem, HHState::HH_State)
+    #x, f = archive.x[argmin(archive.fit)], minimum(archive.fit)
+    x, f = HHState.x, HHState.x_fit
     return StochasticComparisonState(x,copy(x), f, f, 1, 1), 0   
 end
 

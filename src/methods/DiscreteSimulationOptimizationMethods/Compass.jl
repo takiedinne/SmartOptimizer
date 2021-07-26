@@ -86,14 +86,14 @@ end
 
 function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration::Int, state::COMPASS_SearcherState) where {T}
     #we add all the solution in promsing area to value
-    addSim=SimulationAllocationRule(method, state.k)
-    PromosingArea=state.PromosingArea
-    V=state.V
-    f= problem.objective
+    addSim = SimulationAllocationRule(method, state.k)
+    PromosingArea = state.PromosingArea
+    V =state.V
+    f = problem.objective
     for i in 1:size(PromosingArea)[1]
         if PromosingArea[i] in V.x
-            j=findfirst(x->x==PromosingArea[i],V.x)
-            V.addSimulation[j]+=addSim
+            j=findfirst(x->x == PromosingArea[i],V.x)
+            V.addSimulation[j] += addSim
         else
             push!(V,(PromosingArea[i],addSim,0,0))
         end
@@ -101,10 +101,9 @@ function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration:
     nbrSim=0 #nbr of simulations counter
     #run simulations
     for i in 1:nrow(V)
-        fit_sum=0
+        fit_sum = 0
         for j in 1:V.addSimulation[i]
-            fit_sum+=f(V.x[i])
-            
+            fit_sum += f(V.x[i])
         end
         V.meanSampling[i]=(V.meanSampling[i]*V.NumberSimulationDone[i]+fit_sum)/(V.NumberSimulationDone[i]+V.addSimulation[i])
         V.NumberSimulationDone[i]+=V.addSimulation[i]
@@ -129,25 +128,23 @@ function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration:
 end
 
 function isFeasible(x, upBound, LowBound)
-    return !(sum(x.>upBound)>0 || sum(x.<LowBound)>0)
+    return !(sum(x.>upBound) > 0 || sum(x.<LowBound)>0)
 end
 
-function create_state_for_HH(method::COMPASS_Searcher, problem::Problem{T}, archive) where {T<:Number}
-    xBestArchive = archive.x[argmin(archive.fit)]
-    V=DataFrame(:x=>[],:addSimulation=>Int[],
-                    :NumberSimulationDone=>Int[], :meanSampling=>[])# visited solutions List
+function create_state_for_HH(method::COMPASS_Searcher, problem::Problem{T}, HHState::HH_State) where {T<:Number}
+    #xBestArchive = archive.x[argmin(archive.fit)]
+    x = HHState.x
+    fit =HHState.x_fit
+    V=DataFrame(:x=>[x],:addSimulation=>[0],
+                    :NumberSimulationDone=>[1], :meanSampling=>[fit])# visited solutions List
     
-    
-    push!(V,(xBestArchive,0,1,minimum(archive.fit)))
     PromosingArea=[]
     # here we initialise the promosing area 
-    neighbors=method.neighborsSearcher(xBestArchive,problem.upper,problem.lower)
+    neighbors=method.neighborsSearcher(x,problem.upper,problem.lower)
     # we sample m solution from these neighbors
     indexes=rand(1:length(neighbors),method.m)
-    
-    PromosingArea=[]
     for i in 1:length(indexes)
         push!(PromosingArea,neighbors[indexes[i]])
     end
-    COMPASS_SearcherState(xBestArchive, V[1,:].meanSampling, 0, V, PromosingArea), 0
+    COMPASS_SearcherState(x, V[1,:].meanSampling, 0, V, PromosingArea), 0
 end

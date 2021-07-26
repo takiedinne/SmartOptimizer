@@ -116,13 +116,13 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     state.x_k, state.f_k, nbrSim
 end
 
-function create_state_for_HH(method::HookeAndJeeves, problem::Problem, archive)
+function create_state_for_HH(method::HookeAndJeeves, problem::Problem, HHState::HH_State)
     return HookeAndJeevesState(
                 1,
                 method.initial_step_size,
-                minimum(archive.fit),
-                copy(archive.x[argmin(archive.fit)]),
-                copy(archive.x[argmin(archive.fit)])
+                HHState.x_fit,
+                copy(HHState.x),
+                copy(HHState.x)
                 ), 0
 end
 

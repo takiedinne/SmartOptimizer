@@ -41,10 +41,10 @@ SteadyStateAchieved=zeros(J)
             global m-=1
             #println("a customer from queue number $name is served...")
         end
-        #here we interrupt switch process 
-        
+        #here we interrupt switch process
+        #println(" tring to interrupt switch queue")
         @yield interrupt(switchProcess)
-        
+        #println(" end interrupting switch queue")
     end
     
 end
@@ -77,7 +77,7 @@ end
     switchProcess= @process SwitchQueue(sim)
     for i in 1:J
         @process CostumerArrival(sim,i)
-    end
+    end 
     #queue processes
     for i in 1:J
         proc=@process queue(sim,i,switchProcess,K)

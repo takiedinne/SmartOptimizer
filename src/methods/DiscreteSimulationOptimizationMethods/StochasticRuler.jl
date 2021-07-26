@@ -8,7 +8,7 @@ struct StochasticRuler <:LowLevelHeuristic
     method_name::String
     M::Integer
 end
-StochasticRuler(;M=3)= StochasticRuler("Stochastic Ruler", M)
+StochasticRuler(;M=1)= StochasticRuler("Stochastic Ruler", M)
 mutable struct StochasticRulerState{T} <: State
     x::Array{T,1}
     x_current::Array{T,1}
@@ -75,13 +75,13 @@ function has_converged(method::StochasticRuler, x::Tuple{Array{T},Array{T}}, f::
     false
 end
 
-function create_state_for_HH(method::StochasticRuler, problem::Problem, archive)
-    f= minimum(archive.fit)
-    x= archive.x[argmin(archive.fit)]
+function create_state_for_HH(method::StochasticRuler, problem::Problem, HHState::HH_State)
+    f = HHState.x_fit
+    x = HHState.x
     upper_fit = f
     lower_fit = f
     A=Dict(x => f)
-    C=Dict(problem.x_initial => 1)
+    C=Dict(x => 1)
 
     StochasticRulerState(x, copy(x), f, f, upper_fit, lower_fit, A, C), 0
 end

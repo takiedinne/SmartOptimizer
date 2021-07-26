@@ -77,9 +77,9 @@ function update_state!(method::SimulatedAnnealing, problem::Problem{T}, iteratio
     state.x_current, state.f_x_current, nbrSim
 end
 
-function create_state_for_HH(method::SimulatedAnnealing, problem::Problem, archive)
-    result=minimum(archive.fit)
+function create_state_for_HH(method::SimulatedAnnealing, problem::Problem, HHState::HH_State)
+    result=HHState.x_fit
     # Store the best state ever visited
-    best_x = copy(archive.x[argmin(archive.fit)])
+    best_x = HHState.x
     SimulatedAnnealingState(copy(best_x), 1, best_x, copy(best_x), result, result,result), 0
 end

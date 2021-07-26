@@ -61,9 +61,9 @@ function defaultSelectionFunc(LLHs::DataFrame, t_total, t_remain)
             prob[i] = p
         end
     end
-    println(prob)
+    #println(prob)
     # we pick one LLH
-    @show roulette(prob,1)[1]
+    roulette(prob,1)[1]
 end
 mutable struct TabuSearchHH <: HyperHeuristic
     method_name::String

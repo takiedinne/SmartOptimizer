@@ -255,38 +255,35 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     state.nm_x = nmobjective(state.f_simplex, n, m)
     state.iteration+=1
     
-    #=copyto!(state.x_lowest, state.simplex[state.i_order[1]])
-    copyto!(state.x_second_highest, state.simplex[state.i_order[n]])
-    copyto!(state.x_highest, state.simplex[state.i_order[m]])
-
-    state.f_lowest = state.f_simplex[state.i_order[1]]
-    f_second_highest = state.f_simplex[state.i_order[n]]
-    f_highest = state.f_simplex[state.i_order[m]]=#
-
     state.x_lowest, state.f_lowest, nbrSim
 end
-function create_state_for_HH(method::NelderMead, problem::Problem, archive)
+function create_state_for_HH(method::NelderMead, problem::Problem, HHState)
+    
     T = eltype(method.parameters.α)
     n = problem.dimension 
     m = n + 1 # simplex size
     nbrSim = 0
-    archiveCopy= copy(archive)
+    archiveCopy= copy(HHState.archive)
     archiveCopy= sort!(archiveCopy,[:fit])
-    initial_x= archiveCopy.x[1]
-    if nrow(archive) >= m
-        simplex = archiveCopy.x[1:m]
-        f_simplex = archiveCopy.fit
+    initial_x = HHState.x
+    f_x = HHState.x_fit
+    simplex = [initial_x]
+    f_simplex = [f_x]
+    if nrow(HHState.archive) >= m-1
+        append!(simplex, archiveCopy.x[1:m-1])
+        append!(f_simplex, archiveCopy.fit[1:m-1])
     else
-        simplex = archiveCopy.x
-        f_simplex = archiveCopy.fit
-        for i in 1:(m-nrow(archive))
-            tmp = copy(problem.x_initial)
+        append!(simplex, archiveCopy.x)
+        append!(f_simplex, archiveCopy.fit)
+        for i in 1:(m-nrow(HHState.archive))
+            tmp = copy(initial_x)
             random_x!(tmp, n, upper=problem.upper, lower=problem.lower)
             push!(simplex, tmp)
             push!(f_simplex, problem.objective(tmp))
             nbrSim += 1
         end
     end
+
     
     # Get the indices that correspond to the ordering of the f values
     # at the vertices. i_order[1] is the index in the simplex of the vertex
@@ -294,7 +291,7 @@ function create_state_for_HH(method::NelderMead, problem::Problem, archive)
     # simplex of the vertex with the highest function value
     
     i_order = sortperm(f_simplex)
-
+    
     α, β, γ, δ = parameters(method.parameters, n)
     
     NelderMeadState(copy(initial_x), # Variable to hold final minimizer value for MultivariateOptimizationResults

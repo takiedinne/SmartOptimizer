@@ -1,6 +1,7 @@
 function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
   nbrTotalSim = 0
   fit_historic = []
+  best_fit_historic = []
   iteration = 1
   converged = false
   trace = nothing
@@ -9,6 +10,7 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
   nbrTotalSim += 1
   push!(fit_historic,f_cur)
+  push!(best_fit_historic,f_cur)
   # Start timing now
   t1 = time()
   HHstate, nbrOfRuns = initial_HHstate(method, problem)
@@ -16,29 +18,29 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   while true
     x_cur, f_cur, nbrOfRuns = update_HHState!(method, problem, HHstate, iteration)
     nbrTotalSim += nbrOfRuns
-    push!(fit_historic,f_cur)
+    push!(fit_historic,HHstate.x_fit)
+    push!(best_fit_historic,HHstate.x_best_fit)
     if ( iteration >= options.max_iterations)
       break
     end
-    #=if iteration % 20 == 0 
+    if iteration % 20 == 0 
       #plot the Results
-      display(plot(1:(iteration+1), fit_historic))
-    end=#
+      plot(1:(iteration+1), fit_historic, label="current")
+      display(plot!(1:(iteration+1), best_fit_historic, label="best"))
+    end
     iteration += 1
-    
   end
-
   elapsed_time = time() - t1
   
   #=anim = @animate for i ∈ 1:(iteration+1)
       plot(1:i, fit_historic[1:i], label= method.method_name)
   end every 10
   gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\",method.method_name,"_",method.moveAcceptance,"_",method.learningMachanism,".gif"), fps = 20)
- =# 
+  
   #plot(1:length(fit_historic), fit_historic, label= string(method.method_name, "-", method.learningMechanism.method_name,"-", method.moveAcceptance))
   plot(1:length(fit_historic), fit_historic, label= string(method.method_name, "-", method.moveAcceptance))
-  savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\TabuSearchHH\\",method.method_name,"_",method.moveAcceptance,"_",method.learningMechanism.method_name,".png"))
-
+  savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\TabuSearchHH\\",method.method_name,"_",method.moveAcceptance,".png"))
+=#
  return Results(
     method.method_name,
     problem.x_initial,
@@ -58,16 +60,16 @@ end
 
 function loadAllLLH()
   methods= Array{LowLevelHeuristic,1}()
-  push!(methods, GA())
+  #push!(methods, GA())
   push!(methods, HookeAndJeeves())
-  push!(methods, NelderMead())
+  #push!(methods, NelderMead())
   push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
   push!(methods, StochasticComparison())
   push!(methods, StochasticRuler())
-  push!(methods, TabuSearch())
-  push!(methods, GeneratingSetSearcher())
-  push!(methods, COMPASS_Searcher())
+  #push!(methods, TabuSearch())
+  #push!(methods, GeneratingSetSearcher())
+  #push!(methods, COMPASS_Searcher())
   return methods
 end
 
@@ -76,20 +78,20 @@ function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_S
   newSolutions=Array{Tuple{Array{T,1}, Float64},1}()
   for LLH in LLHs
     nbrSim=0
-    state, nbrSim = create_state_for_HH(LLH, problem, HHState.archive)# we'll see how this  function works after
-    prev_fit=HHState.x_fit
+    state, nbrSim = create_state_for_HH(LLH, problem,HHState)# we'll see how this  function works after
+    prev_fit= HHState.x_fit
     current_fit = HHState.x_fit
-    current_x =HHState.x
+    current_x = HHState.x
     
     #start timing for LLH monitoring
     
-    CPUTime =time()
+    CPUTime = time()
     for i in 1:phaseSize
       current_x, current_fit, lastnbrSim = update_state!(LLH, problem, i, state)
       nbrSim += lastnbrSim
     end
-    CPUTime=time()-CPUTime
-    println(LLH.method_name, " is applied to ", current_x, " ", current_fit)
+    CPUTime = time()-CPUTime
+    println(LLH.method_name, " is applied")
     # create the performance struct
     Δfitness= current_fit - prev_fit
     performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
@@ -112,7 +114,7 @@ function get_solution_from_archive(archive, problem::Problem, nbr_of_solutions::
       n = length(archiveCopy.x[1])
       for i in 1:(nbr_of_solutions - nrow(archive))
           tmp = copy(archiveCopy.x[1])
-          random_x!(tmp, n, upper=problem.upper, lower=problem.lower)
+          random_x!(tmp, n, upper = problem.upper, lower = problem.lower)
           push!(pop, tmp)
           push!(f_pop, problem.objective(tmp))
           nbrSim += 1
@@ -130,12 +132,13 @@ function update_archive!(method::HyperHeuristic, state::HH_State, newSolution)
   if newSolution[1] in state.archive.x 
     return
   end
-  if length(state.archive) < method.archiveSize
+  
+  if nrow(state.archive) < method.archiveSize
     #here we add directely the new solution
     push!(state.archive, newSolution)
   elseif newSolution[2] < maximum(state.archive.fit)
     #here we remplace te worstest solution
-    state.archive[argmax(state.archive.fit),:] = newSolution    
+    state.archive[argmax(state.archive.fit),:] = newSolution  
   end
 end
 
@@ -189,9 +192,10 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
       plot(1:i, fit_historic[1:i], label= method.method_name)
   end every 10
   gif(anim, string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\",method.method_name,"_currentSolution.gif"), fps = 10)
-  =#
+  
   plot(1:length(fit_historic), fit_historic, label= method.method_name)
   savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\500Iter\\",method.method_name,".png"))
+  =#
   return Results(
     method.method_name,
     problem.x_initial,

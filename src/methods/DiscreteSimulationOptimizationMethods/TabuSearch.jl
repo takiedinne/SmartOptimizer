@@ -96,7 +96,10 @@ function update_state!(method::TabuSearch, problem::Problem{T}, iteration::Int, 
     state.x_current, state.f_x_current, nbrSim
 end
 
-function create_state_for_HH(mathod::TabuSearch, problem::Problem, archive)
-    best_x, result, nbrSim =  get_solution_from_archive(archive, problem, 1)
+function create_state_for_HH(mathod::TabuSearch, problem::Problem, HHState::HH_State)
+    #best_x, result, nbrSim =  get_solution_from_archive(archive, problem, 1)
+    best_x, result, nbrSim = HHState.x, HHState.x_fit, 0
     TabuSearchState(copy(best_x), 1, best_x,  result, result,Dict(),Dict(),0), nbrSim
 end
+
+    

@@ -111,6 +111,7 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     if state.step_size < 1
         # Restart from a random point because it converged to a local minimum
         random_x!(state.x, length(state.x), upper= upper, lower= lower)
+       
         state.xfitness = f(state.x)
         nbrSim += 1
         state.step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
@@ -127,7 +128,7 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     
     # Loop over directions until we find an improvement (or there are no more directions to check).
     for direction in order
-        candidate = round.(state.x + state.step_size .* directions[:, direction])
+        candidate = Integer.(round.(state.x + state.step_size .* directions[:, direction]))
         #check if the new point in inbounds
         check_in_bounds(upper, lower, candidate)
         f_candidate = f(candidate)
@@ -153,12 +154,13 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     state.x , state.xfitness, nbrSim 
 end
 
-function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, archive)
-    initial_x = archive.x[argmin(archive.fit)]
-    n= length(initial_x)
+function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, HHState::HH_State)
+    initial_x = HHState.x
+    f = HHState.x_fit
+    n = length(initial_x) #dimension
     directions= method.direction_gen(n)
     step_size = calc_initial_step_size(problem.lower, problem.upper, method.step_size_factor)
-    f = minimum(archive.fit)
-    GeneratingSetSearcherState(directions, n , 0, step_size, copy(initial_x),
+    
+    GeneratingSetSearcherState(directions, n , 0, step_size, initial_x,
     f, copy(initial_x), f), 1
 end
