@@ -97,7 +97,7 @@ function OrdinalOptimization(sim::Function, NbrVar::Int, UpBound::Int)
     for row in eachrow(X)
         sum=0
         for i in 1:Lm
-            sum+=sim_GG1K(row.x)
+            sum+=fitnessStr(row.x)
         end
         row.fit=sum/Lm
     end
@@ -107,15 +107,18 @@ function OrdinalOptimization(sim::Function, NbrVar::Int, UpBound::Int)
     for row in eachrow(X)
         sum=0
         for i in 1:Ls
-            sum+=sim_GG1K(row.x)
+            sum += fitnessStr(row.x)
         end
         row.fit=sum/Ls
     end
     sort!(X,[:fit])
     X[1,:]
 end
+include("../../../simulations/BrainFuck/Brainfuck.jl")
+include("../../../simulations/BrainFuck/fitnessFunctions.jl")
+using Main.Brainfuck
 startTime=time()
-m=OrdinalOptimization(sim_GG1K,10,20)
+m=OrdinalOptimization(fitnessStr,100,8)
 endTime=time()
 delay=(endTime-startTime)/60
 m

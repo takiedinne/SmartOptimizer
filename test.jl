@@ -8,3 +8,4 @@ using Main.SmartOptimizer
 p = Problem(fitnessStr, false, 150, upper= ones(150).*8, lower=ones(150))
 m = TabuSearchHH(es=10)
 HH_optimize(m, p)
+a= ones(3)

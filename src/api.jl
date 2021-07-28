@@ -60,16 +60,16 @@ end
 
 function loadAllLLH()
   methods= Array{LowLevelHeuristic,1}()
-  #push!(methods, GA())
+  push!(methods, GA())
   push!(methods, HookeAndJeeves())
-  #push!(methods, NelderMead())
+  push!(methods, NelderMead())
   push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
   push!(methods, StochasticComparison())
   push!(methods, StochasticRuler())
-  #push!(methods, TabuSearch())
-  #push!(methods, GeneratingSetSearcher())
-  #push!(methods, COMPASS_Searcher())
+  push!(methods, TabuSearch())
+  push!(methods, GeneratingSetSearcher())
+  push!(methods, COMPASS_Searcher())
   return methods
 end
 
