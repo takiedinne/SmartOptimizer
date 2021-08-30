@@ -1,11 +1,8 @@
 include("src/SmartOptimizer.jl")
-#include("simulations/GG1K_simulation.jl")
-include("simulations/BrainFuck/Brainfuck.jl")
-include("simulations/BrainFuck/fitnessFunctions.jl")
-using Main.Brainfuck
+include("simulations/one_layer_with_gap_GA_sand.jl")
 using Main.SmartOptimizer
 
-p = Problem(fitnessStr, false, 150, upper= ones(150).*8, lower=ones(150))
-m = TabuSearchHH(es=10)
-HH_optimize(m, p)
-a= ones(3)
+p = Problem(fobj_horizontal, false, nvars, upper = round.(Int, upper), lower = round.(Int,lower))
+
+m = TabuSearchHH()
+HH_optimize(m, p, Options(max_iterations=1000))

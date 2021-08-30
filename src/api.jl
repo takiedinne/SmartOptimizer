@@ -180,7 +180,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
 
     copy!(x_prev, x_cur)
     f_prev = f_cur
-   #= if iteration % 20 == 0 
+    #=if iteration % 20 == 0 
       #plot the Results
       display(plot(1:(iteration+1), fit_historic))
     end=#

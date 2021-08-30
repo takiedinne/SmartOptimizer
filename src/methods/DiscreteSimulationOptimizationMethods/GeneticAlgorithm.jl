@@ -75,7 +75,7 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     populationSize = method.populationSize
     crossoverRate = method.crossoverRate
     mutationRate = method.mutationRate
-    ɛ =method.ɛ
+    ɛ =method.ɛ 
     selection = method.selection
     crossover = method.crossover
     mutation = method.mutation
@@ -129,25 +129,14 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     state.x , state.x_fitness, method.populationSize
 end
 function create_state_for_HH(method::GA, problem::Problem, HHState::HH_State)
+    nbrSim = 0
     N = problem.dimension
     # setup state values
     eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
+    # it is batter to use get solutions from archive function if we want
     population = DataFrame(x= [HHState.x], fit = [HHState.x_fit])
-    population= append!(population, HHState.archive)
-    nbrSim = 0
-    if method.populationSize > nrow(HHState.archive)+1
-        #we generate random solution to complet the solution
-        for i in 1:(method.populationSize - nrow(HHState.archive)-1)
-            tmp=copy(population.x[1])
-            random_x!(tmp, length(tmp), upper = problem.upper, lower = problem.lower)
-            tmp_fit = problem.objective(tmp)
-            push!(population, (tmp, tmp_fit))
-            nbrSim += 1
-        end
-    end
-    sort!(population, [:fit])
-    fitness =  population.fit[1:method.populationSize]
-    population = population.x[1:method.populationSize]
+    x, fit, nbrSim = get_solution_from_archive(HHState.archive, problem, method.populationSize-1 )
+    append!(population, (x = x, fit = fit))
     # setup initial state
     GAState(N, eliteSize, HHState.x_fit, fitness, copy(HHState.x), population), nbrSim
 end

@@ -263,27 +263,13 @@ function create_state_for_HH(method::NelderMead, problem::Problem, HHState)
     n = problem.dimension 
     m = n + 1 # simplex size
     nbrSim = 0
-    archiveCopy= copy(HHState.archive)
-    archiveCopy= sort!(archiveCopy,[:fit])
     initial_x = HHState.x
     f_x = HHState.x_fit
     simplex = [initial_x]
     f_simplex = [f_x]
-    if nrow(HHState.archive) >= m-1
-        append!(simplex, archiveCopy.x[1:m-1])
-        append!(f_simplex, archiveCopy.fit[1:m-1])
-    else
-        append!(simplex, archiveCopy.x)
-        append!(f_simplex, archiveCopy.fit)
-        for i in 1:(m-nrow(HHState.archive))
-            tmp = copy(initial_x)
-            random_x!(tmp, n, upper=problem.upper, lower=problem.lower)
-            push!(simplex, tmp)
-            push!(f_simplex, problem.objective(tmp))
-            nbrSim += 1
-        end
-    end
-
+    x, fit, nbrSim = get_solution_from_archive(HHState.archive, problem, n)
+    append!(simplex, x)
+    append!(f_simplex, fit)
     
     # Get the indices that correspond to the ordering of the f values
     # at the vertices. i_order[1] is the index in the simplex of the vertex

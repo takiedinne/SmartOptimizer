@@ -181,11 +181,11 @@ function MTO_product(start_time)
     # the due date for the product is 100 time unit.
 
     # first calculate h_i for all operation
-    calculate_operations_holding_cost!() # as the papameters are global so we don't need to pass them to the function 
+    calculate_operations_holding_cost!(1) # as the papameters are global so we don't need to pass them to the function 
     #the first sum in the fitness function
     WIP_holding_cost = sum( i.holding_cost * 
                             (operations_df.available_time[argmax(product_structure[:, i.id_op])] - i.completion_time)
-                            for i in  eachrow( filter(row -> maximum(product_structure[:, row.id_op]) != 0 , a) ) )
+                            for i in  eachrow( filter(row -> maximum(product_structure[:, row.id_op]) != 0 , operations_df) ) )
     #here we assume the product has only one final node and always is the first node 
     earliness_cost = operations_df.holding_cost[1] * max(due_date - operations_df.completion_time[1], 0)
     tardiness_cost = 2 * operations_df.holding_cost[1] * max(operations_df.completion_time[1] - due_date , 0)
