@@ -1,3 +1,4 @@
+__precompile__() 
 module SmartOptimizer
     
     using LinearAlgebra
@@ -9,6 +10,7 @@ module SmartOptimizer
     using Combinatorics
     using Plots, StatsPlots
     using Distances
+    using CSV
 
     include("types.jl")
     include("api.jl")
@@ -20,6 +22,7 @@ module SmartOptimizer
     include("methods/OtherMethods/OCBA.jl")
     include("methods/DiscreteSimulationOptimizationMethods/ParticleSwarm.jl")
     include("methods/DiscreteSimulationOptimizationMethods/SimulatedAnnealing.jl")
+    include("methods/DiscreteSimulationOptimizationMethods/SimulatedAnnealingSO.jl")
     include("methods/DiscreteSimulationOptimizationMethods/StochasticComparison.jl")
     include("methods/DiscreteSimulationOptimizationMethods/StochasticRuler.jl")
     include("methods/DiscreteSimulationOptimizationMethods/TabuSearch.jl")
@@ -29,18 +32,24 @@ module SmartOptimizer
     include("HyperHeuristics/Epsilon-greedy.jl")
     include("HyperHeuristics/MarkovChainHH.jl")
     include("HyperHeuristics/TabuSearchHH.jl")
+    # elementary methods
+    include("methods/ElementaryMethods/CrossoverMethods.jl")
+    include("methods/ElementaryMethods/MutationMethods.jl")
+    include("methods/ElementaryMethods/LocalSearchMethods.jl")
+    
     export
         optimize,
         Problem,
         Options,
         GeneratingSetSearcher,
         COMPASS_Searcher,
-        GA,
+        GeneticAlgorithm,
         HookeAndJeeves,
         NelderMead,
         OCBA,
         ParticleSwarm,
         SimulatedAnnealing,
+        SimulatedAnnealingSO,
         StochasticComparison,
         StochasticRuler,
         TabuSearch,

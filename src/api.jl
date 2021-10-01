@@ -4,7 +4,6 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   best_fit_historic = []
   iteration = 1
   converged = false
-  trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
 
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
@@ -23,11 +22,11 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
     if ( iteration >= options.max_iterations)
       break
     end
-    if iteration % 20 == 0 
+    #=if iteration % 20 == 0 
       #plot the Results
       plot(1:(iteration+1), fit_historic, label="current")
       display(plot!(1:(iteration+1), best_fit_historic, label="best"))
-    end
+    end=#
     iteration += 1
   end
   elapsed_time = time() - t1
@@ -41,7 +40,9 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   plot(1:length(fit_historic), fit_historic, label= string(method.method_name, "-", method.moveAcceptance))
   savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\HyperHeuristic\\TabuSearchHH\\",method.method_name,"_",method.moveAcceptance,".png"))
 =#
- return Results(
+
+#plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5)
+return Results(
     method.method_name,
     problem.x_initial,
     HHstate.x_best,
@@ -49,9 +50,8 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
     iteration,
     converged,
     options.ϵ_x,
-    elapsed_time,
-    trace
-  ), nbrTotalSim
+    elapsed_time
+  ), nbrTotalSim #, best_fit_historic
 end
 
 function HH_optimize(method::HyperHeuristic, problem::Problem{T}) where {T<:Number}
@@ -60,7 +60,7 @@ end
 
 function loadAllLLH()
   methods= Array{LowLevelHeuristic,1}()
-  push!(methods, GA())
+  #=push!(methods, GeneticAlgorithm())
   push!(methods, HookeAndJeeves())
   push!(methods, NelderMead())
   push!(methods, ParticleSwarm())
@@ -69,7 +69,13 @@ function loadAllLLH()
   push!(methods, StochasticRuler())
   push!(methods, TabuSearch())
   push!(methods, GeneratingSetSearcher())
-  push!(methods, COMPASS_Searcher())
+  push!(methods, COMPASS_Searcher())=#
+  push!(methods, SinglePointCrossover())
+  push!(methods, TwoPointCrossover())
+  push!(methods, UniformCrossover())
+  push!(methods, InterpolationCrossover())
+  push!(methods, SteepestDescentMethod())
+  push!(methods, FirstImprovementMethod())
   return methods
 end
 
@@ -86,12 +92,13 @@ function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_S
     #start timing for LLH monitoring
     
     CPUTime = time()
+    println(LLH.method_name, " is going to be applied to $current_x")
     for i in 1:phaseSize
       current_x, current_fit, lastnbrSim = update_state!(LLH, problem, i, state)
       nbrSim += lastnbrSim
     end
     CPUTime = time()-CPUTime
-    println(LLH.method_name, " is applied")
+    
     # create the performance struct
     Δfitness= current_fit - prev_fit
     performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
@@ -102,9 +109,9 @@ function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_S
 end
 
 function get_solution_from_archive(archive, problem::Problem, nbr_of_solutions::Integer)
-  nbrSim=0
-  archiveCopy= copy(archive)
-  archiveCopy= sort!(archiveCopy,[:fit])
+  nbrSim = 0
+  archiveCopy = copy(archive)
+  archiveCopy = sort!(archiveCopy,[:fit])
   if nrow(archive) >= nbr_of_solutions
       pop = archiveCopy.x[1:nbr_of_solutions]
       f_pop = archiveCopy.fit[1:nbr_of_solutions]
@@ -144,33 +151,29 @@ end
 
 function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Options) where {T<:Number}
   fit_historic=[]
+  best_fit_historic = []
+  nbr_Sim_historic=[]
   iteration = 1
   converged = false
-  trace = nothing
   x_cur, x_prev = copy(problem.x_initial), zeros(T, length(problem.x_initial))
   
   f_cur, f_prev = problem.objective(problem.x_initial), Inf
   push!(fit_historic,f_cur)
-  if options.store_trace
-    # Set up automatic tracking of objective function evaluations
-    trace = create_trace(method)
-    problem = setup_trace(problem, trace)
-    trace!(trace, 0, x_cur, f_cur)
-  end
+  push!(nbr_Sim_historic, 1)
+  
 
   # Start timing now
   t1 = time()
 
   state = initial_state(method, problem)
-  nbrTotalSim = 0
+  nbrTotalSim = 1
   while true
     println(method.method_name," iteration: ", iteration)
     x_cur, f_cur, nbrSim = update_state!(method, problem, iteration, state)
     nbrTotalSim += nbrSim
-    push!(fit_historic,f_cur)
-    if options.store_trace
-      trace!(method, trace, iteration, x_cur, f_cur, options, state)
-    end
+    #push!(fit_historic,state.f_x_current)
+    push!(best_fit_historic,state.f_x)
+    push!(nbr_Sim_historic, nbrTotalSim)
 
     converged = has_converged(method, (x_prev, x_cur), (f_prev, f_cur), options, state)
 
@@ -196,57 +199,27 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
   plot(1:length(fit_historic), fit_historic, label= method.method_name)
   savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\500Iter\\",method.method_name,".png"))
   =#
+  
+  #display(plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5))
   return Results(
     method.method_name,
     problem.x_initial,
-    x_cur,
-    f_cur,
+    state.x,
+    state.f_x,
     iteration,
     converged,
     options.ϵ_x,
-    elapsed_time,
-    trace
-  ), nbrTotalSim
+    elapsed_time
+  ), nbrTotalSim, best_fit_historic
 end
 
 function optimize(method::LowLevelHeuristic, problem::Problem{T}) where {T<:Number}
   return optimize(method, problem, Options())
 end
 
-function create_trace(method::LowLevelHeuristic)
-  SearchTrace()
-end
-
-function setup_trace(problem::Problem, trace::SearchTrace)
-  objective(x) = begin
-    value = problem.objective(x)
-    push!(trace.evaluations, (copy(x), value))
-    return value
-  end
-
-  return Problem(objective, problem.x_initial)
-end
-
-function trace!(method::LowLevelHeuristic, trace::SearchTrace, i::Int, x::Array{T}, f::T, options::Options, state::State) where {T<:Number}
-  trace!(trace, i, x, f)
-end
-
-function trace!(trace::SearchTrace, i::Int, x::Array{T}, f::T) where {T<:Number}
-  push!(trace.iterations, (copy(x), f))
-end
 
 function has_converged(method::LowLevelHeuristic, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
  # return has_converged(x..., options) || has_converged(f..., options)
  return false 
-end
-
-function has_converged(f_cur::T, f_prev::T, options::Options) where {T<:Number}
-  f_cur - f_prev < options.ϵ_f && println("f converged")
-  return f_cur - f_prev < options.ϵ_f
-end
-
-function has_converged(x_cur::Array{T}, x_prev::Array{T}, options::Options) where {T<:Number}
-  norm(x_cur - x_prev) < options.ϵ_x && println(" x converged")
-  return norm(x_cur - x_prev) < options.ϵ_x
 end
 

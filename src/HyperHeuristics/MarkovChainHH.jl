@@ -87,14 +87,4 @@ function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::Marko
     HHState.x , HHState.x_fit, performance.numSimRun
 end
 
-function fix_reward_punish(HHstate::MarkovChainState, performances::PerformanceFactors, LLHs)
-    #this function give reward or punishment to the applied LLH
-    reward = 1
-    punish = 0
-    if performances.ΔFitness < 0
-        HHstate.transitionMatrix[HHstate.previousLLHIndex, HHstate.currentLLHIndex] += reward
-    else
-        HHstate.transitionMatrix[HHstate.previousLLHIndex, HHstate.currentLLHIndex] -= punish
-    end
-end
 

@@ -7,12 +7,12 @@ mutable struct ϵGreedy <: HyperHeuristic
     episodeSize::Integer # must be in all the HH
     selectionFunction::Function
     adaptEpsilonFunc::Function # in the first step i will not use this functionalty
-    moveAcceptance::Function
+    moveAcceptance::MoveAcceptanceMechanism
     archiveSize::Integer
     learningMechanism# responsible of monitoring the performance of LLHs
 end
 
-ϵGreedy(;ϵ=0.5, episodeSize=1, SF=Epsilon_greedy_selection_mechanism, aE=AdaptEpsilon, MA=NaiveAcceptance, AS=10, 
+ϵGreedy(;ϵ=0.5, episodeSize=1, SF=Epsilon_greedy_selection_mechanism, aE=AdaptEpsilon, MA=NaiveAcceptance(), AS=10, 
         LM= reward_punish_LM()) = ϵGreedy("ϵ-Greedy",ϵ, episodeSize, SF, aE, MA, AS, LM)
 
 mutable struct ϵGreedyState{T} <: HH_State
@@ -59,18 +59,20 @@ function update_HHState!(method::ϵGreedy, problem::Problem, HHState::ϵGreedySt
     currentLLH= HHState.LLHs[HHState.currentLLHIndex] 
     #apply the selected LLH 
     #apply_LLH! return array of tuple (new solution_i for LLH_i, fit_i) and array of performance  
+    
     newSolution, performance = apply_LLH!([currentLLH], problem, method.episodeSize, HHState)
     newSolution, performance = newSolution[1], performance[1] # cause we've aoolied only one LLH
-   
+    
     #new solution is tuple of solution and fitness
     #move acceptance
-    if method.moveAcceptance(newSolution, [HHState.x, HHState.x_fit])
+    if MoveAcceptance(method.moveAcceptance, newSolution, [HHState.x, HHState.x_fit])
         HHState.x, HHState.x_fit = newSolution
         #check if it is a new best solution
         if HHState.x_best_fit > newSolution[2]
             HHState.x_best, HHState.x_best_fit = newSolution
         end
     end
+    
     nextLearningState= getCurrentState() #i must use fitness to precise which state we are
     # for learning function we need the HHstate, performance resulting after applying the LLh and the LLHs applied
     learn!(method.learningMechanism, performance.ΔFitness,currentLearningState, HHState.currentLLHIndex, nextLearningState)
