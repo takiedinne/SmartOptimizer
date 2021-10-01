@@ -1,53 +1,87 @@
 include("src/SmartOptimizer.jl")
 include("simulations/GG1K_simulation.jl")
-include("simulations/BrainFuck/Brainfuck.jl")
-include("simulations/BrainFuck/fitnessFunctions.jl")
-using Main.Brainfuck
 using Main.SmartOptimizer
-using DataFrames
+using Distributions
 using CSV
-p = Problem(fitnessStr,false,150, upper=Integer.(ones(150).*8), lower= Integer.(ones(150)))
-x=p.x_initial
-methods= DataFrame( abv=[], method=[], duration=[], x=[], fit=[], nbrSim=[] )
+using DataFrames
+using Plots
+using Serialization
 
-push!(methods, ["GA", GA(), 0, x, Inf, 0])
-push!(methods, ["HJ", HookeAndJeeves(), 0, x, Inf, 0])
-push!(methods, ["NM", NelderMead(), 0, x, Inf, 0])
-push!(methods, ["PS", ParticleSwarm(), 0, x, Inf, 0])
-push!(methods, ["SA", SimulatedAnnealing(), 0, x, Inf, 0])
-push!(methods, ["SC", StochasticComparison(), 0, x, Inf, 0])
-push!(methods, ["SR", StochasticRuler(), 0, x, Inf, 0])
-push!(methods, ["TS", TabuSearch(), 0, x, Inf, 0])
-push!(methods, ["GS", GeneratingSetSearcher(), 0, x, Inf, 0])
-push!(methods, ["COMPASS", COMPASS_Searcher(), 0, x, Inf, 0])
 
-t= time()
-for i in 1:nrow(methods)
-    method= methods[i, :method]
-    res=0
-    try
-        res = optimize(method,p)
-    catch e
-        println("the ", method.method_name, " is interrupted...")
-        msg = sprint(showerror, e)
-        println(msg)
-        read(stdin, Char)
-        continue
+#define the range of the expirement 
+replication_nbr_array = [3,5,10]
+max_iteration_nbr_array = [1000]
+
+initial_x = rand(1:20,10)
+deterministic_method_list = [ HookeAndJeeves(), NelderMead(),
+                             ParticleSwarm(), SimulatedAnnealing(), TabuSearch(),
+                             GeneticAlgorithm(),
+                              ]
+
+HH_method_list = [ϵGreedy(), MarkovChainHH(), TabuSearchHH()]
+Stochastic_method_list = [StochasticComparison(), StochasticRuler(), GeneratingSetSearcher(),
+                          COMPASS_Searcher(), SimulatedAnnealingSO()  ]
+
+df_result = DataFrame( method_name=[], replication_nbr=[], 
+                        max_iteration_nbr = [], duration=[], x=[], fit=[], nbrSim=[],
+                         real_fit=[], trace = [])
+
+for max_iteration_nbr in max_iteration_nbr_array
+    plot(xlabel = "iterations", ylabel = "f(x)")
+    opt = Options(max_iterations = max_iteration_nbr)
+    for replication_nbr in replication_nbr_array
+        p = Problem(sim_GG1K, false, 10, upper = ones(10).*20, lower = ones(10),
+                        initial_x = initial_x, replicationsNbr = replication_nbr)
+        #deterministic list
+        for m in deterministic_method_list
+            res = optimize(m, p, opt)
+            name = m.method_name
+            duration = res[1].elapsed_time
+            x = res[1].minimizer
+            fit = res[1].minimum
+            real_fit = mean([p.objective(x) for i in 1:100])
+            nbrSim = res[2]
+            his_best_fit = res[3]
+            push!(df_result, (name , replication_nbr, max_iteration_nbr, duration, x,
+                    fit, nbrSim, real_fit, his_best_fit))
+        end
+        #hyper heuristic list
+        for m in HH_method_list
+            res = HH_optimize(m, p, opt)
+            name = m.method_name
+            duration = res[1].elapsed_time
+            x = res[1].minimizer
+            fit = res[1].minimum
+            real_fit = mean([p.objective(x) for i in 1:100])
+            nbrSim = res[2]
+            his_best_fit = res[3]
+            push!(df_result, (name, replication_nbr, max_iteration_nbr, duration, x,
+                    fit, nbrSim, real_fit, his_best_fit))
+        end
     end
-    if res != 0
-        methods[i, :duration]=res[1].elapsed_time
-        methods[i, :x]=res[1].minimizer
-        methods[i, :fit]=res[1].minimum
-        methods[i, :nbrSim]=res[2]
+    # stochastic list
+    p = Problem(sim_GG1K, false, 10, upper = ones(10).*20, lower = ones(10),
+                initial_x = initial_x)
+    for m in Stochastic_method_list
+        res = optimize(m, p, opt)
+        name = m.method_name
+        duration = res[1].elapsed_time
+        x = res[1].minimizer
+        fit = res[1].minimum
+        real_fit =mean([p.objective(x) for i in 1:100])
+        nbrSim = res[2]
+        his_best_fit = res[3]
+        push!(df_result, (name, NaN, max_iteration_nbr, duration, x,
+                fit, nbrSim, real_fit, his_best_fit))
     end
-end 
+end
+df_trace = df_result[:,[:method_name, :trace]]
+select!(df_result, Not(:trace))
+# save files
+path = "C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\MultiQueueServer\\"
 
+CSV.write(path * "results.csv", df_result)
+serialize(path * "trace.jls", df_trace)
 
-select!(methods, Not(:method))
+#trace = deserialize("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\MultiQueueServer\\trace.jls")
 
-total_time= time()-t
-
-#CSV.write("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\500Iter\\AllMethods500Iter.csv", methods)
-#=
-m= CSV.read("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\AllMethods1000Iter.csv", DataFrame)
-m.abv"""=#

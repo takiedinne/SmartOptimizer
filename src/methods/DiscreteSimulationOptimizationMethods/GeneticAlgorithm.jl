@@ -15,7 +15,7 @@ function mutation_fun(x,problem::Problem{T}) where {T}
     end
     new_x
 end
-mutable struct GA <: LowLevelHeuristic
+mutable struct GeneticAlgorithm <: LowLevelHeuristic
     method_name::String
     populationSize::Int
     crossoverRate::Float64
@@ -25,7 +25,7 @@ mutable struct GA <: LowLevelHeuristic
     crossover::Function
     mutation::Function
 
-    GA(; populationSize::Int=10, crossoverRate::Float64=0.8, mutationRate::Float64=0.1,
+    GeneticAlgorithm(; populationSize::Int=10, crossoverRate::Float64=0.8, mutationRate::Float64=0.1,
         ɛ::Real=0.2, epsilon::Real=ɛ,
         selection::Function = roulette,
         crossover::Function = twopoint, mutation::Function = mutation_fun) =
@@ -36,16 +36,16 @@ end
 mutable struct GAState{T,IT} <: State
     N::Int #dimension
     eliteSize::Int # fraction or Number of instances used in the cross over step
-    x_fitness::T # min fitness
+    f_x::T # min fitness
     fitpop::Vector{T} # all population's fitness
     x::IT # the best solution
     population::Vector{IT}
 end
 
-value(s::GAState) = s.x_fitness
+value(s::GAState) = s.f_x
 minimizer(s::GAState) = s.x
 
-function initial_population(method::GA, problem::Problem{T}) where {T} 
+function initial_population(method::GeneticAlgorithm, problem::Problem{T}) where {T} 
     size_population=method.populationSize
     population= []
     for i in 1:size_population
@@ -55,8 +55,8 @@ function initial_population(method::GA, problem::Problem{T}) where {T}
     end
     return population
 end
-#Initialization of GA algorithm state"""
-function initial_state(method::GA, problem::Problem{T}) where {T<:Number}
+#Initialization of GeneticAlgorithm algorithm state"""
+function initial_state(method::GeneticAlgorithm, problem::Problem{T}) where {T<:Number}
     N = problem.dimension
     fitness = zeros(method.populationSize)
 
@@ -71,7 +71,7 @@ function initial_state(method::GA, problem::Problem{T}) where {T<:Number}
 end
 
 #the main algorithm
-function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::GAState) where {T}
+function update_state!(method::GeneticAlgorithm, problem::Problem{T}, iteration::Int, state::GAState) where {T}
     populationSize = method.populationSize
     crossoverRate = method.crossoverRate
     mutationRate = method.mutationRate
@@ -103,7 +103,7 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     # Elitism (copy population individuals to complete offspring before they pass to the offspring & get mutated)
     fitidxs = sortperm(state.fitpop)# get the rank of each element accordding to fitness
     for i in 1:state.eliteSize
-        subs = offspringSize+i
+        subs = offspringSize + i
         offspring[subs] = copy(population[fitidxs[i]])
     end
 
@@ -115,7 +115,7 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     end
 
     # Create new generation & evaluate it
-    population=offspring
+    population = offspring
     for i in 1:populationSize
         state.fitpop[i] = problem.objective(population[i])
     end
@@ -123,20 +123,22 @@ function update_state!(method::GA, problem::Problem{T}, iteration::Int, state::G
     # find the best individual
     minfit, fitidx = findmin(state.fitpop)
     state.x = population[fitidx]
-    state.x_fitness = state.fitpop[fitidx]
+    state.f_x = state.fitpop[fitidx]
     #return the best values and it is the current
     
-    state.x , state.x_fitness, method.populationSize
+    state.x , state.f_x, method.populationSize
 end
-function create_state_for_HH(method::GA, problem::Problem, HHState::HH_State)
+function create_state_for_HH(method::GeneticAlgorithm, problem::Problem, HHState::HH_State)
     nbrSim = 0
     N = problem.dimension
     # setup state values
     eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
     # it is batter to use get solutions from archive function if we want
-    population = DataFrame(x= [HHState.x], fit = [HHState.x_fit])
+    population = [HHState.x]
+    pop_fit = [HHState.x_fit]
     x, fit, nbrSim = get_solution_from_archive(HHState.archive, problem, method.populationSize-1 )
-    append!(population, (x = x, fit = fit))
+    append!(population, x)
+    append!(pop_fit, fit)
     # setup initial state
-    GAState(N, eliteSize, HHState.x_fit, fitness, copy(HHState.x), population), nbrSim
+    GAState(N, eliteSize, HHState.x_fit, pop_fit, copy(HHState.x), population), nbrSim
 end

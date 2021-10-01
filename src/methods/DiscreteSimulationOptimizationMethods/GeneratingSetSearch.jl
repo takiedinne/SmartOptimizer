@@ -66,10 +66,10 @@ mutable struct GeneratingSetSearcherState{T} <: State
     n::Int # problem dimension 
     k::Int # iteration counter
     step_size::Float64           # current step size
+    x_current::AbstractArray{T,1}
+    f_x_current::Float64
     x::AbstractArray{T,1}
-    xfitness::Float64
-    x_best::AbstractArray{T,1}
-    xfitness_best::Float64
+    f_x::Float64
 end
 function initial_state(method::GeneratingSetSearcher, problem::Problem{T}) where {T<:Number}
     lower= problem.lower
@@ -110,9 +110,9 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     directions = state.directions.directions #Matrix each column is vector to add to the current solution
     if state.step_size < 1
         # Restart from a random point because it converged to a local minimum
-        random_x!(state.x, length(state.x), upper= upper, lower= lower)
+        random_x!(state.x_current, length(state.x_current), upper= upper, lower= lower)
        
-        state.xfitness = f(state.x)
+        state.f_x_current = f(state.x_current)
         nbrSim += 1
         state.step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
     end
@@ -128,30 +128,30 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     
     # Loop over directions until we find an improvement (or there are no more directions to check).
     for direction in order
-        candidate = Integer.(round.(state.x + state.step_size .* directions[:, direction]))
+        candidate = Integer.(round.(state.x_current + state.step_size .* directions[:, direction]))
         #check if the new point in inbounds
         check_in_bounds(upper, lower, candidate)
         f_candidate = f(candidate)
         nbrSim+=1
-        if f_candidate<state.xfitness
+        if f_candidate<state.f_x_current
             found_better = true
             break
         end
     end
 
     if found_better
-        state.x = candidate
-        state.xfitness = f_candidate
+        state.x_current = candidate
+        state.f_x_current = f_candidate
         state.step_size *= method.step_size_gamma
-        if f_candidate < state.xfitness_best
-            state.x_best = candidate
-            state.xfitness_best = f_candidate
+        if f_candidate < state.f_x
+            state.x = candidate
+            state.f_x = f_candidate
         end
     else
         state.step_size *= method.step_size_phi
     end
     state.step_size = min(state.step_size, method.step_size_max* minimum(upper.-lower))
-    state.x , state.xfitness, nbrSim 
+    state.x_current , state.f_x_current, nbrSim 
 end
 
 function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, HHState::HH_State)

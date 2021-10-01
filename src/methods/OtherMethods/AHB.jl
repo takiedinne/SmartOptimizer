@@ -13,14 +13,6 @@ function SimulationAllocationRule(k::Int)
     min(5, floor(β*log(k)^(1+γ))+1)
 end
 
-function isFeasible(x, upBound, LowBound)
-    #here we can check if the solution is subject to the constraints
-    isFeasible=true
-    if sum(x.>upBound)>0 || sum(x.<LowBound)>0
-        isFeasible=false
-    end
-    isFeasible
-end
 function GetNeighborsBoundaries(x, V,upBound, lowBound)
     dim= length(x)
     neighbors=[]

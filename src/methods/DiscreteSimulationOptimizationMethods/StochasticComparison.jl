@@ -20,7 +20,7 @@ StochasticComparison(;simulationAllocationRule=SimulationAllocationRule, neighbo
 mutable struct StochasticComparisonState{T} <:State
     x::Array{T,1}
     x_condidate::Array{T,1}
-    mean_f::Real
+    f_x::Real
     mean_f_condidate::Real
     nbr_simulated_optimal::Integer
     iteration::Integer
@@ -61,19 +61,16 @@ function update_state!(method::StochasticComparison, problem::Problem{T}, iterat
     if comparisonTest
         
         state.x= state.x_condidate
-        state.mean_f= sum_f_condidate / nbrOfComparison
+        state.f_x= sum_f_condidate / nbrOfComparison
         state.nbr_simulated_optimal=nbrOfComparison
         
     else
         
-        state.mean_f = (state.mean_f * state.nbr_simulated_optimal + sum_f) /(state.nbr_simulated_optimal+ nbr_simulation_performed)
+        state.f_x = (state.f_x * state.nbr_simulated_optimal + sum_f) /(state.nbr_simulated_optimal+ nbr_simulation_performed)
         state.nbr_simulated_optimal += nbr_simulation_performed
     end
     state.iteration+=1
-    state.x, state.mean_f, nbr_simulation_performed*2
-end
-function has_converged(method::StochasticComparison, x::Tuple{Array{T},Array{T}}, f::Tuple, options::Options, state::State) where {T<:Number}
-    false
+    state.x, state.f_x, nbr_simulation_performed*2
 end
 
 function create_state_for_HH(method::StochasticComparison, problem::Problem, HHState::HH_State)

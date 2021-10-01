@@ -78,6 +78,7 @@ mutable struct NelderMeadState{Tx, T, Tfs} <:State
     f_simplex::Tfs
     nm_x::T
     f_lowest::T
+    f_x::T
     i_order::Vector{Int}
     α::T
     β::T
@@ -118,6 +119,7 @@ function initial_state(method::NelderMead, problem::Problem)
           f_simplex, # Store objective values at the vertices in state.f_simplex
           T(nmobjective(f_simplex, n, m)), # Store nmobjective in state.nm_x
           f_simplex[i_order[1]], # Store lowest f in state.f_lowest
+          f_simplex[i_order[1]], # Store the optimal f in state.f_x
           i_order, # Store a vector of rankings of objective values
           T(α),
           T(β),
@@ -254,7 +256,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     # usefull for convergence we measure the size of the simplex
     state.nm_x = nmobjective(state.f_simplex, n, m)
     state.iteration+=1
-    
+    state.f_x = state.f_lowest
     state.x_lowest, state.f_lowest, nbrSim
 end
 function create_state_for_HH(method::NelderMead, problem::Problem, HHState)
@@ -293,6 +295,7 @@ function create_state_for_HH(method::NelderMead, problem::Problem, HHState)
           f_simplex, # Store objective values at the vertices in state.f_simplex
           T(nmobjective(f_simplex, n, m)), # Store nmobjective in state.nm_x
           f_simplex[i_order[1]], # Store lowest f in state.f_lowest
+          f_simplex[i_order[1]], # Store the optimal f in state.f_x
           i_order, # Store a vector of rankings of objective values
           T(α),
           T(β),

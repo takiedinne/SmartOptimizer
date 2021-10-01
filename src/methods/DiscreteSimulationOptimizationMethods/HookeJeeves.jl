@@ -22,11 +22,10 @@ function HookeAndJeeves(;
 end
 
 mutable struct HookeAndJeevesState{T} <: State
-    
     current_dim::Int
     step_size::Real
-    f_k  #current scor
-    x_k::Array{T,1}#current solution
+    f_x  #current scor
+    x::Array{T,1}#current solution
     x_b::Array{T,1}
 end
 
@@ -53,7 +52,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     n= problem.dimension
     upper = problem.upper
     lower = problem.lower
-    x_k, x_b = state.x_k, state.x_b
+    x_k, x_b = state.x, state.x_b
     nbrSim = 0
     # Evaluate a positive and a negative point in each cardinal direction
     # and update as soon as one is found
@@ -81,9 +80,9 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
             nbrSim += 1
     
             # If the point is better, immediately go there
-            if (f_trial <= state.f_k)
+            if (f_trial <= state.f_x)
                 copy!(x_k, x_trial)
-                state.f_k = f_trial
+                state.f_x = f_trial
                 state.current_dim += 1
                 improved=true
                 break
@@ -100,7 +99,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     end
 
     # Attempt to move in an acceleration based direction
-    x_trial = 2x_k - x_b
+    x_trial = 2*x_k - x_b
     check_in_bounds(upper, lower, x_trial)
     f_trial = problem.objective(x_trial)
     nbrSim += 1
@@ -108,12 +107,12 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     state.current_dim = 1
 
     # If the point is an improvement use it
-    if f_trial <= state.f_k
+    if f_trial <= state.f_x
         copy!(x_k, x_trial)
-        state.f_k = f_trial
+        state.f_x = f_trial
     end
-    
-    state.x_k, state.f_k, nbrSim
+    state.x = x_k
+    state.x, state.f_x, nbrSim
 end
 
 function create_state_for_HH(method::HookeAndJeeves, problem::Problem, HHState::HH_State)
