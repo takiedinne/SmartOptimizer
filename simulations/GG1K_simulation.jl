@@ -2,7 +2,7 @@ using Distributions
 using ResumableFunctions
 using SimJulia
 using Random
-const J=10 #number of queus (variables)
+const J=10  # number of queus (variables)
 const μ=20
 const δ=1/30
 const σ=0.01
@@ -16,8 +16,8 @@ const ServiceTimeDistribution=Exponential(μ)
 
 numberOfCustumer=zeros(J)
 currentQueue=1
-custumerarrivalTime=[]
-custumerWaitingTime=[]
+custumerarrivalTime =[]
+custumerWaitingTime =[]
 
 SteadyStateAchieved=zeros(J)
 
@@ -78,7 +78,7 @@ end
 @resumable function CostumerArrival(env::Environment, queue::Queue)
     ArrivalDistribution= Poisson(λ[1])
     while true
-        @yield timeout(env,rand(ArrivalDistribution))
+        @yield timeout(env,60 * rand(ArrivalDistribution))
         if length(queue.customerInQueue) < queue.capacity
             #println(" a customer is arriving to the queue n° ", queue.id)
             c =  customer(now(env), NaN, NaN)

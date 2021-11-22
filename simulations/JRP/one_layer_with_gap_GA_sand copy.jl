@@ -12,6 +12,8 @@ import Base.show
 using LinearAlgebra
 
 using Evolutionary, Test, Random
+include("../../src/SmartOptimizer.jl")
+using Main.SmartOptimizer
 
 
 function compute_bottom_factor(Nx::Int64, Ny::Int64; kwargs...)
@@ -595,3 +597,9 @@ upper = ub .* ones(nvars) #this is because we append Ly to upper: upper = [Ly up
 
 fobj_horizontal = x -> fobj_horizontal_vector(Float64.(x), g, s, max_length) 
 
+
+
+p = Problem(fobj_horizontal, false, 5, upper = upper, lower = lower)
+m = ParticleSwarm()
+
+optimize(m, p)

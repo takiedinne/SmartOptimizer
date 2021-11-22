@@ -60,48 +60,50 @@ end
 
 function loadAllLLH()
   methods= Array{LowLevelHeuristic,1}()
-  #=push!(methods, GeneticAlgorithm())
+  push!(methods, GeneticAlgorithm())
   push!(methods, HookeAndJeeves())
-  push!(methods, NelderMead())
   push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
   push!(methods, StochasticComparison())
   push!(methods, StochasticRuler())
   push!(methods, TabuSearch())
   push!(methods, GeneratingSetSearcher())
-  push!(methods, COMPASS_Searcher())=#
-  push!(methods, SinglePointCrossover())
+  
+  push!(methods, NelderMead())
+  push!(methods, COMPASS_Searcher())
+  #push!(methods, AntColonySearcher())
+  #=push!(methods, SinglePointCrossover())
   push!(methods, TwoPointCrossover())
   push!(methods, UniformCrossover())
   push!(methods, InterpolationCrossover())
   push!(methods, SteepestDescentMethod())
-  push!(methods, FirstImprovementMethod())
+  push!(methods, FirstImprovementMethod())=#
   return methods
 end
-
 function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_State) where T
-  performances=Array{PerformanceFactors,1}()
-  newSolutions=Array{Tuple{Array{T,1}, Float64},1}()
+  performances = Array{PerformanceFactors,1}()
+  newSolutions = Array{Tuple{Array{T,1}, Float64},1}()
+  
   for LLH in LLHs
-    nbrSim=0
-    state, nbrSim = create_state_for_HH(LLH, problem,HHState)# we'll see how this  function works after
+    nbrSim = 0
+    state, nbrSim = create_state_for_HH(LLH, problem, HHState)# we'll see how this  function works after
     prev_fit= HHState.x_fit
     current_fit = HHState.x_fit
     current_x = HHState.x
-    
     #start timing for LLH monitoring
-    
     CPUTime = time()
-    println(LLH.method_name, " is going to be applied to $current_x")
+    avg_fit = 0
+    # println(LLH.method_name, " is going to be applied to $current_x")
     for i in 1:phaseSize
       current_x, current_fit, lastnbrSim = update_state!(LLH, problem, i, state)
       nbrSim += lastnbrSim
+      avg_fit += current_fit
     end
     CPUTime = time()-CPUTime
-    
+    avg_fit /= phaseSize 
     # create the performance struct
     Δfitness= current_fit - prev_fit
-    performance = PerformanceFactors(Δfitness, nbrSim, CPUTime)
+    performance = PerformanceFactors(Δfitness, nbrSim, CPUTime, avg_fit, current_fit)
     push!(performances, performance)
     push!(newSolutions, (current_x, current_fit))
   end
@@ -172,7 +174,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
     x_cur, f_cur, nbrSim = update_state!(method, problem, iteration, state)
     nbrTotalSim += nbrSim
     #push!(fit_historic,state.f_x_current)
-    push!(best_fit_historic,state.f_x)
+    push!(best_fit_historic, state.f_x)
     push!(nbr_Sim_historic, nbrTotalSim)
 
     converged = has_converged(method, (x_prev, x_cur), (f_prev, f_cur), options, state)
@@ -200,7 +202,7 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
   savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\500Iter\\",method.method_name,".png"))
   =#
   
-  #display(plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5))
+  display(plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5))
   return Results(
     method.method_name,
     problem.x_initial,
@@ -223,3 +225,17 @@ function has_converged(method::LowLevelHeuristic, x::Tuple{Array{T},Array{T}}, f
  return false 
 end
 
+function init_learning_machanism(method::HyperHeuristic, nbrStates, nbrOfActions)
+  if typeof(method.learningMechanism) == reward_punish_LM
+    method.learningMechanism.scores = ones(nbrOfActions)
+  elseif typeof(method.learningMechanism) == SARSA_LM 
+      method.learningMechanism.Q_Table = ones(nbrStates, nbrOfActions)
+      method.learningMechanism.scores = ones(nbrOfActions)
+      method.learningMechanism.previousStateActionReward = nothing
+  elseif typeof(method.learningMechanism) == QLearning_LM
+      method.learningMechanism.Q_Table = ones(nbrStates, nbrOfActions)
+      method.learningMechanism.scores = ones(nbrOfActions)
+  elseif typeof(method.learningMechanism) == LearningAutomata
+      method.learningMechanism.scores = normalize(ones(nbrOfActions))
+  end
+end

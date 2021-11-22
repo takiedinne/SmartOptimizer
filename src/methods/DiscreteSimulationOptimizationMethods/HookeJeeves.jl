@@ -5,21 +5,14 @@ about the step size initially i will fixed to
 =#
 struct HookeAndJeeves <: LowLevelHeuristic
     method_name::String
-    initial_step_size::Real# percent from overall  the search space by default 25%
+    initial_step_size::Real # percent from overall  the search space by default 25%
     step_reduction::Real # fraction of reduction by default 0.5
     ϵ_h::Real # here the small allowed step size by default 1
 end
-  
-function HookeAndJeeves(;
+HookeAndJeeves(;
     initial_step_size = 0.25,
     step_reduction = 0.5,
-    ϵ_h = 1.0)
-    return HookeAndJeeves("Hooke and Jeeves",
-        initial_step_size,
-        step_reduction,
-        ϵ_h
-    )
-end
+    ϵ_h = 1.0) = HookeAndJeeves("Hooke and Jeeves", initial_step_size, step_reduction, ϵ_h)
 
 mutable struct HookeAndJeevesState{T} <: State
     current_dim::Int
@@ -49,7 +42,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     # to review this assertion it can causes an error
     @assert (problem.upper != [] && problem.lower != []) || state.step_size >= 1 " the problem must be bounded to use fractional step size..."
     
-    n= problem.dimension
+    n = problem.dimension
     upper = problem.upper
     lower = problem.lower
     x_k, x_b = state.x, state.x_b
@@ -61,13 +54,13 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
         improved=false
         for dir in [1,-1]
             #calculate step size
-            if state.step_size>=1
-                lenght_step=state.step_size
+            if state.step_size >= 1
+                length_step = state.step_size
             else
-                lenght_step=state.step_size*(upper[state.current_dim]-lower[state.current_dim])
+                length_step = state.step_size * (upper[state.current_dim]-lower[state.current_dim])
             end
             x_trial= copy( x_k)
-            x_trial[state.current_dim] += round(dir * lenght_step)
+            x_trial[state.current_dim] += round(dir * length_step)
 
             #check if the new point in inbounds
             if x_trial[state.current_dim] > upper[state.current_dim]
@@ -95,6 +88,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     # If the cardinal direction searches did not improve, reduce the
     # step size
     if (x_k == x_b)
+        @show "didin't improve at $iteration"
         state.step_size *= method.step_reduction
     end
 

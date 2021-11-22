@@ -1,13 +1,12 @@
 abstract type MoveAcceptanceMechanism end
 
-
 #see the paper hyper heuristic based reinforcement learning 2018.pdf
 # be carful all this functions must have the same inputs
 mutable struct OnlyImprovement <:MoveAcceptanceMechanism
     method_name::String
 end
 OnlyImprovement() = OnlyImprovement("Only improvement")
-function MoveAcceptance(method::OnlyImprovement, newSolution, previouseSolution)
+function isAccepted(method::OnlyImprovement, newSolution, previousSolution)
     return newSolution[2] < previousSolution[2]
 end
 
@@ -15,7 +14,7 @@ mutable struct AllMoves <:MoveAcceptanceMechanism
     method_name::String
 end
 AllMoves() = AllMoves("All Moves")
-function MoveAcceptance(method::AllMoves, newSolution, previouseSolution)
+function isAccepted(method::AllMoves, newSolution, previouseSolution)
     return true
 end
 
@@ -25,7 +24,7 @@ mutable struct NaiveAcceptance <:MoveAcceptanceMechanism
     WorstAccProb::Real # accepting worrsing solutions probability
 end
 NaiveAcceptance(;WorstAccProb=0.5) = NaiveAcceptance("Naive Acceptance", WorstAccProb)
-function MoveAcceptance(method::NaiveAcceptance, newSolution, previousSolution)
+function isAccepted(method::NaiveAcceptance, newSolution, previousSolution)
     accept= false
     if newSolution[2] < previousSolution[2]
         accept = true
@@ -57,7 +56,7 @@ mutable struct ILTA <: MoveAcceptanceMechanism
     w_iteration::Integer # worsing solution counter
 end
 ILTA(;R=1.005, K=10) = ILTA("iteration limited threshold accepting", R, K ,0)
-function MoveAcceptance(method::ILTA, newSolution, previousSolution)
+function isAccepted(method::ILTA, newSolution, previousSolution)
     answer = false
     if newSolution[2] < previousSolution[2]
         answer = true

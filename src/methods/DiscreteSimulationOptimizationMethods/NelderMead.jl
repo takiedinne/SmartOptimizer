@@ -9,7 +9,7 @@ AffineSimplexer(;a = 0.025, b = 0.5) = AffineSimplexer(a, b)
 
 function simplexer(S::AffineSimplexer, initial_x::Tx) where Tx
     n = length(initial_x)
-    initial_simplex = Tx[copy(initial_x) for i = 1:n+1]
+    initial_simplex = Tx[copy(initial_x) for i in 1:n+1]
     for j = 1:n
         # here I use round function to ensure that the points are in integer search space
         initial_simplex[j+1][j] = round((1+S.b) * initial_simplex[j+1][j] + S.a)
@@ -128,7 +128,6 @@ function initial_state(method::NelderMead, problem::Problem)
           "initial")
 end
 
-
 function sgnd(k)
     result=1
     if k==0 result=0 end
@@ -152,8 +151,8 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     # Compute a reflection
     @inbounds for j in 1:n
         state.x_reflect[j] = state.x_highest[j] + 
-                                state.α * (floor(abs(state.x_highest[j]-state.x_centroid[j]))+1) * 
-                                sgnd(state.x_centroid[j]-state.x_highest[j])
+                                state.α * (floor(abs(state.x_highest[j]-state.x_centroid[j])) + 1) * 
+                                sgnd(state.x_centroid[j] - state.x_highest[j])
     end
     
     check_in_bounds( problem.upper, problem.lower, state.x_reflect)
@@ -218,7 +217,7 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
             end
             
         else # f_reflect > f_highest
-            # Inside constraction
+            # Inside contraction
             @inbounds for j in 1:n
                 state.x_cache[j] = state.x_highest[j] + round(state.γ *
                 (floor(abs(state.x_highest[j]-state.x_centroid[j]))+1) * 
@@ -255,8 +254,9 @@ function update_state!(method::NelderMead, problem::Problem{T} , iteration::Int,
     
     # usefull for convergence we measure the size of the simplex
     state.nm_x = nmobjective(state.f_simplex, n, m)
-    state.iteration+=1
+    state.iteration += 1
     state.f_x = state.f_lowest
+    state.x = copy(state.x_lowest)
     state.x_lowest, state.f_lowest, nbrSim
 end
 function create_state_for_HH(method::NelderMead, problem::Problem, HHState)

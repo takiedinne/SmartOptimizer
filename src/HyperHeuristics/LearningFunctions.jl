@@ -1,11 +1,15 @@
+"""
+it is necessary that all the learning methods contains mondatory 
+scores and method name field
+"""
 abstract type LearningMethod end
 
-mutable struct reward_punish_LM{T} <:LearningMethod
+mutable struct reward_punish_LM <:LearningMethod
     method_name::String
-    r::T #reward
-    p::T #punish
-    γ #the threshold
-    scores::Array{T,1}
+    r # reward
+    p # punish
+    γ # the threshold
+    scores::Array{Float64,1}
 end
 reward_punish_LM(;r=1.0, p=1.0, gamma=0)= reward_punish_LM("reward_punish_LM", r, p, gamma, ones(length(loadAllLLH())))
 function learn!(learning_mechanism::reward_punish_LM, ΔFitness::Float64, currentState, LLHIndex::Integer, nextState)
@@ -46,11 +50,13 @@ mutable struct SARSA_LM <:LearningMethod
     p # punish signal
     Q_Table::Matrix #state x actions
     previousStateActionReward # Tuple{state, action, reward}
-    scores #used to select the next LLH
+    scores # used to select the next LLH
 end
-SARSA_LM(;γ= 0.8, α=0.9, r=1, p=0, nbrStates=1)= SARSA_LM("SARSA_LM", γ, α, r, p, ones(nbrStates, length(loadAllLLH())), nothing, ones(length(loadAllLLH())))
+
+SARSA_LM(;γ= 0.8, α=0.9, r=1, p=0, nbrStates=1)= SARSA_LM("SARSA_LM", γ, α, r, p, Array{Float64}(undef, 0, 0), nothing, nothing)
 function learn!(learning_mechanism::SARSA_LM, ΔFitness::Float64, currentState, LLHIndex::Integer, nextState)
     allPositive = true
+    learning_mechanism.previousStateActionReward, currentState, LLHIndex 
     # compute the reward signal 
     if ΔFitness < 0
         reward_signal = learning_mechanism.r
@@ -68,11 +74,13 @@ function learn!(learning_mechanism::SARSA_LM, ΔFitness::Float64, currentState, 
         #here sure the negative value is the last updated scores
         lastUpdatedValue = abs(learning_mechanism.Q_Table[s,a])
         learning_mechanism.Q_Table[s,:] = learning_mechanism.Q_Table[s,:] .+ lastUpdatedValue
-        println(learning_mechanism.scores)
+        
     end
     #update the previous tuple
     learning_mechanism.previousStateActionReward = (currentState, LLHIndex, reward_signal)
-    learning_mechanism.scores= learning_mechanism.Q_Table[nextState,:]
+    learning_mechanism.scores = learning_mechanism.Q_Table[nextState,:]
+    
+    
 end
 #***********************************************************************
 """
@@ -93,17 +101,15 @@ mutable struct QLearning_LM <:LearningMethod
     Q_Table
     scores # current  
 end
-QLearning_LM(;gamma=0.8, alpha=0.9, r=1, p=0, nbrOfStates= 1)= 
-             QLearning_LM("QLearning_LM", gamma, alpha, r, p, ones(nbrOfStates, length(loadAllLLH())), ones(length(loadAllLLH())))
+QLearning_LM(;gamma=0.8, alpha=0.9, r=1, p=0, nbrStates= 1)= 
+             QLearning_LM("QLearning_LM", gamma, alpha, r, p, ones(nbrStates, length(loadAllLLH())), ones(length(loadAllLLH())))
 function learn!(learning_mechanism::QLearning_LM, ΔFitness::Float64, currentState, LLHIndex::Integer, nextState)
-    
     # scores it the actuel state-actions scores 
     if ΔFitness < 0
         reward_signal = learning_mechanism.r
     else
         reward_signal = learning_mechanism.p
     end
-    
     learning_mechanism.Q_Table[currentState, LLHIndex] +=  learning_mechanism.α * 
                                     (reward_signal + learning_mechanism.γ * maximum(learning_mechanism.Q_Table[nextState,:]) 
                                     - learning_mechanism.Q_Table[currentState, LLHIndex])
@@ -115,6 +121,7 @@ function learn!(learning_mechanism::QLearning_LM, ΔFitness::Float64, currentSta
         
     end
     learning_mechanism.scores = learning_mechanism.Q_Table[nextState, :]
+    #show(stdout, "text/plain", learning_mechanism.Q_Table)
 end
 """
 learning automata is learning mechanism implemented in the way that is described on [1].
@@ -138,7 +145,6 @@ LearningAutomata(;lambda1=0.001, lambda2=0, beta=1) =
     length(loadAllLLH()), beta, lambda1, lambda2)
 
 function learn!(learning_mechanism::LearningAutomata, ΔFitness::Float64, currentState, LLHIndex::Integer, nextState)
-    println("begin learning ...")
     LM = learning_mechanism
     β = ΔFitness <= 0 ? 1 : 0 
     for i in 1:length(LM.scores)
@@ -150,7 +156,6 @@ function learn!(learning_mechanism::LearningAutomata, ΔFitness::Float64, curren
                                     LM.λ2 * (1 - β) * (1/(LM.nbrOfActions-1) - LM.scores[i])
         end
     end
-    println("end learning ...")
 end
 
 

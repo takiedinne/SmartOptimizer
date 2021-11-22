@@ -42,6 +42,7 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
     n_particles = method.n_particles
     X = Array{T,2}(undef, n, n_particles)
     V = Array{Float64,2}(undef, n, n_particles)
+    
     X_best = Array{T,2}(undef, n, n_particles)
     
     score = zeros( n_particles)
@@ -68,19 +69,19 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
 
         if limit_search_space
             # initialise randomly positif or negative vitess that not execced 0.5 from the search space 
-            V[:,i] = map(x->x * (rand() * 2 - 1) / 10, ww)
+            V[:,i] = [j * (rand() * 2 - 1) / 10 for j in ww]
         else #unbounded search space
+            
             V[:,i] = rand(T, n)
         end
     end
     # crush the first inputs to be like initial x
     X[:,1] = copy(x)
     X_best[:,1] = copy(x)
-    
+    V[:,1] = [i * (rand() * 2 - 1) / 10 for i in ww]
     for i in 2:n_particles
         score[i] = problem.objective(X[:, i])
     end
-
     ParticleSwarmState(
         x,
         score[1],
@@ -99,7 +100,6 @@ function initial_state(method::ParticleSwarm, problem::Problem{T}) where {T<:Num
         1000)
 end
 
-
 function housekeeping!(score, best_score, X, X_best, best_point,
                        F, n_particles)
     n = size(X, 1)
@@ -108,14 +108,17 @@ function housekeeping!(score, best_score, X, X_best, best_point,
             best_score[i] = score[i]
             X_best[:, i] = X[:, i]
             if score[i] <= F
-                best_point = X[:, i]
+                #println("best X ",X[:, i]," fit=", score[i])
+                for j in 1:length(best_point) 
+                    best_point[j] = X[j, i]
+                end
             	F = score[i]
             end
         end
     end
+    #println("houskeeping is ", best_point)
     return F
 end
-
 function get_mu_1(f::Tx) where Tx
     if Tx(0) <= f <= Tx(4)/10
         return Tx(0)
@@ -290,14 +293,17 @@ end
 
 function update_swarm!(X::AbstractArray{Tx}, X_best, best_point, n, n_particles, V,
                        w, c1, c2) where Tx
+
   # compute new positions for the swarm particles
   for i in 1:n_particles
       for j in 1:n
-          r1 = rand()
+           r1 = rand()
           r2 = rand()
           vx = X_best[j, i] - X[j, i]
           vg = best_point[j] - X[j, i]
-          V[j, i] = V[j, i]*w + c1*r1*vx + c2*r2*vg
+          
+          V[j, i] = V[j, i] * w + c1 * r1 * vx + c2 * r2 * vg
+          
           X[j, i] = round(X[j, i] + V[j, i])
       end
     end
@@ -329,6 +335,7 @@ function compute_cost!(f,
 end
 
 function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::Int, state::ParticleSwarmState) where {T}
+     
     nbrSim = 0   
     n = problem.dimension
     state.f_x = housekeeping!(state.score,
@@ -338,6 +345,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
                             state.x,
                             state.f_x,
                             method.n_particles)
+    
     # Elitist Learning:
     # find a new solution named 'x_learn' which is the current best
     # solution with one randomly picked variable being modified.
@@ -345,13 +353,13 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     # if x_learn presents the new best solution.
     # In all other cases discard x_learn.
     # This helps jumping out of local minima.
+     
     i_worst = argmax(state.score)
-    
-    state.x_learn=state.x
+    state.x_learn = copy(state.x)
     random_index = rand(1:n)
     sigma_learn = 1 - (1 - 0.1) * state.iteration / state.iterations
     r3 = randn() * sigma_learn
-
+    
     if state.limit_search_space
         state.x_learn[random_index] = round(state.x_learn[random_index] + (problem.upper[random_index] - problem.lower[random_index]) / 3.0 * r3)
         if state.x_learn[random_index] < problem.lower[random_index]
@@ -362,7 +370,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     else
         state.x_learn[random_index] = round(state.x_learn[random_index] + state.x_learn[random_index] * r3)
     end
-    
+   
     score_learn = problem.objective(state.x_learn)
     nbrSim +=1
 
@@ -370,15 +378,18 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
         state.f_x = score_learn 
         state.X_best[:, i_worst] = state.x_learn
         state.X[:, i_worst] = state.x_learn
-        state.x[:] = state.x_learn
+        state.x[:] = state.x_learn[:]
+        #println("x= ", state.x, " x_learn=", state.x_learn)
         state.score[i_worst] = score_learn
         state.best_score[i_worst] = score_learn
     end
-
+     
     state.current_state, _f = get_swarm_state(state.X, state.score, state.x, state.current_state)
+    
     #state.w, state.c1, state.c2 = update_swarm_params!(state.c1, state.c2, state.w, state.current_state, _f)
+    
     update_swarm!(state.X, state.X_best, state.x, n, method.n_particles, state.V, state.w, state.c1, state.c2)
-
+    
     if state.limit_search_space
         limit_X!(state.X, problem.lower, problem.upper, method.n_particles, n)
     end
@@ -386,6 +397,7 @@ function update_state!(method::ParticleSwarm, problem::Problem{T}, iteration::In
     nbrSim += method.n_particles
     state.iteration += 1
 
+    #println(state.X)
     collect(state.x), state.f_x, nbrSim
 end
 

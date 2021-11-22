@@ -2,11 +2,11 @@ struct MarkovChainHH <:HyperHeuristic
     method_name::String
     episodeSize::Integer
     learningMechanism::LearningMethod
-    moveAcceptance::Function
+    moveAcceptance::MoveAcceptanceMechanism
     archiveSize::Integer
 end
-MarkovChainHH(;es=1, LF= reward_punish_LM(), MA=NaiveAcceptance, AS=10) = MarkovChainHH("Marcov chain hyper heuristic",
-                                                                    es, LF, MA, AS);
+MarkovChainHH(;es=1, LM= reward_punish_LM(), MA=NaiveAcceptance(), AS=10) = MarkovChainHH("Marcov chain hyper heuristic",
+                                                                    es, LM, MA, AS);
                                                                     
 mutable struct MarkovChainState{T} <: HH_State
     x_best::Array{T,1} #reference
@@ -37,10 +37,7 @@ function initial_HHstate(method::MarkovChainHH, problem::Problem)
     previousLLHIndex= rand(1:n) #choose randomly one LLH to be applie at the first stage
     nextLLHIndex = roulette(transitionMatrix[previousLLHIndex,:],1)[1] #choose the next one 
     #initiate the learning mechanism
-    if typeof(method.learningMechanism) != reward_punish_LM{Float64}
-        #here we initiate the Q_table
-        method.learningMechanism.Q_Table= ones(n,n)
-    end
+    init_learning_machanism(method, n, n)
     MarkovChainState( x,
                 copy(x),
                 f,
@@ -64,7 +61,7 @@ function update_HHState!(method::MarkovChainHH, problem::Problem, HHState::Marko
     newSolution, performance = newSolution[1], performance[1] # cause we've aoolied only one LLH
     #new solution is tuple of solution and fitness
     #move acceptance
-    if method.moveAcceptance(newSolution, [HHState.x, HHState.x_fit])
+    if isAccepted(method.moveAcceptance, newSolution, [HHState.x, HHState.x_fit])
         HHState.x, HHState.x_fit = newSolution
         #check if it is a new best solution
         if HHState.x_best_fit > newSolution[2]

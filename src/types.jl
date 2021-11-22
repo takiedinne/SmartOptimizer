@@ -36,17 +36,18 @@ end
 # TODO i must create anothor file called utilities and move this function to it
 function random_x!(x::Array{T,1}, dim::Int;  upper=Array{T,1}[], lower=Array{T,1}[]) where {T<:Number}
  
-  if length(upper) == 0 && length(lower) == 0
-    x =rand(T,dim)
-  elseif length(upper) == 0
-    x =lower .+  abs.(rand(T,dim))
-  elseif length(lower) == 0
-    x =upper .-  abs.(rand(T,dim))
-  else
-    for i in 1:dim
-      x[i]=rand(lower[i]:upper[i])
+    if length(upper) == 0 && length(lower) == 0
+      x =rand(T,dim)
+    elseif length(upper) == 0
+      x =lower .+  abs.(rand(T,dim))
+    elseif length(lower) == 0
+      x =upper .-  abs.(rand(T,dim))
+    else
+      for i in 1:dim
+        x[i] = rand(lower[i]:upper[i])
+      end
     end
-  end
+  
 end
 
 function Problem(objective::Function, continous::Bool, dimension::Int=1; upper=[], lower=[], initial_x=[], replicationsNbr = 1)
@@ -84,9 +85,11 @@ end
 
 
 struct PerformanceFactors
-  ΔFitness::Real
+  ΔFitness::Real # difference between the last and the new solutions
   numSimRun::Integer
   CPUTime::Float64
+  avgFitness::Real # if we run the LLH for many iteration, this value will be the average of all the traversed solution
+  lastFitness::Real
   #here you can add another factors
 end
 function Base.show(io::IO, results::Results)

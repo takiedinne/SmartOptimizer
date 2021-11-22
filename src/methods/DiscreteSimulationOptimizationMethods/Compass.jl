@@ -59,49 +59,49 @@ mutable  struct COMPASS_SearcherState{T} <:State
     f_x
     k::Int #iteration counter
     V::DataFrame #historic information (nbr of sim done, mean of sampling ...etc)
-    PromosingArea::AbstractArray{Any,1}# m neighbors for the current x
+    PromisingArea::AbstractArray{Any,1}# m neighbors for the current x
 end 
 
 function initial_state(method::COMPASS_Searcher, problem::Problem{T}) where {T<:Number}
-    lower= problem.lower
+    lower = problem.lower
     upper = problem.upper
     objfun = problem.objective
     initial_x = problem.x_initial
     dimension = problem.dimension
-    V=DataFrame(:x=>[],:addSimulation=>Int[],
+    V = DataFrame(:x=>[],:addSimulation=>Int[],
                     :NumberSimulationDone=>Int[], :meanSampling=>[])# List of visited solutions
     
     addSim = method.SimulationAllocationRule(method,0)
-    fit_sum=0
-    for i in 1: addSim
-        fit_sum+=objfun(initial_x)
+    fit_sum = 0
+    for i in 1:addSim
+        fit_sum += objfun(initial_x)
     end
-    push!(V,(initial_x,0,addSim,fit_sum/addSim))
-    PromosingArea=[]
+    push!(V,(initial_x, 0, addSim, fit_sum/addSim))
+    PromisingArea=[] # always the size of the promising Area is equal to m
     # here we initialise the promosing area by random points from the search space 
     for i in 1:method.m
-        x=copy(initial_x)
-        random_x!(x,dimension, upper=upper, lower=lower)
-        push!(PromosingArea,x)
+        x = copy(initial_x)
+        random_x!(x, dimension, upper = upper, lower = lower)
+        push!(PromisingArea,x)
     end
-    COMPASS_SearcherState(initial_x, V[1,:].meanSampling, 0, V, PromosingArea)
+    COMPASS_SearcherState(initial_x, V[1,:].meanSampling, 0, V, PromisingArea)
 end
 
 function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration::Int, state::COMPASS_SearcherState) where {T}
     #we add all the solution in promsing area to value
     addSim = SimulationAllocationRule(method, state.k) #adaptive number of simulation for the next iteration
-    PromosingArea = state.PromosingArea # list of solution to visite 
-    
+    PromisingArea = state.PromisingArea # list of solution to visite 
     
     f = problem.objective # the objective function
-    for i in 1:size(PromosingArea)[1]
-        if PromosingArea[i] in state.V.x
-            j=findfirst(x->x == PromosingArea[i],state.V.x)
+    for i in 1:size(PromisingArea)[1]
+        if PromisingArea[i] in state.V.x
+            j = findfirst(x-> x == PromisingArea[i],state.V.x)
             state.V.addSimulation[j] += addSim
         else
-            push!(state.V,(PromosingArea[i],addSim,0,0))
+            push!(state.V,(PromisingArea[i],addSim,0,0))
         end
     end
+
     nbrSim=0 #nbr of simulations counter
     #run simulations
     for i in 1:nrow(state.V)
@@ -110,24 +110,24 @@ function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration:
             fit_sum += f(state.V.x[i])
         end
         #update the the estimated fitness value for the solutions in promosing area 
-        state.V.meanSampling[i] = (state.V.meanSampling[i]*state.V.NumberSimulationDone[i]+fit_sum)/(state.V.NumberSimulationDone[i]+state.V.addSimulation[i])
+        state.V.meanSampling[i] = (state.V.meanSampling[i] * state.V.NumberSimulationDone[i] + fit_sum) / (state.V.NumberSimulationDone[i] + state.V.addSimulation[i])
         state.V.NumberSimulationDone[i] += state.V.addSimulation[i]
         nbrSim += state.V.addSimulation[i]
-        state.V.addSimulation[i]=0
+        state.V.addSimulation[i] = 0
     end
     state.x = state.V.x[argmin(state.V.meanSampling)]
     state.f_x = minimum(state.V.meanSampling)
-    #here we generate the promosing area for the next iteration and we sample from there m
+    #here we generate the promising area for the next iteration and we sample from there m
     #here we are in integer search space so we alter only one dimension using get neighbors
-    neighbors=method.neighborsSearcher(state.x,problem.upper,problem.lower)
+    neighbors = method.neighborsSearcher(state.x,problem.upper,problem.lower)
     # we sample m solution from these neighbors
     indexes=rand(1:length(neighbors),method.m)
     
-    PromosingArea=[]
+    PromisingArea=[]
     for i in 1:length(indexes)
-        push!(PromosingArea, neighbors[indexes[i]])
+        push!(PromisingArea, neighbors[indexes[i]])
     end
-    state.PromosingArea = PromosingArea
+    state.PromisingArea = PromisingArea
     
     state.k += 1
     state.x, state.f_x, nbrSim
@@ -135,18 +135,19 @@ end
 
 function create_state_for_HH(method::COMPASS_Searcher, problem::Problem{T}, HHState::HH_State) where {T<:Number}
     #xBestArchive = archive.x[argmin(archive.fit)]
+    nbrSim = 0
     x = HHState.x
     fit =HHState.x_fit
     V=DataFrame(:x=>[x],:addSimulation=>[0],
                     :NumberSimulationDone=>[1], :meanSampling=>[fit])# visited solutions List
     
-    PromosingArea=[]
+    PromisingArea = []
     # here we initialise the promosing area 
-    neighbors=method.neighborsSearcher(x,problem.upper,problem.lower)
+    neighbors = method.neighborsSearcher(x,problem.upper,problem.lower)
     # we sample m solution from these neighbors
-    indexes=rand(1:length(neighbors),method.m)
+    indexes=rand(1:length(neighbors), method.m)
     for i in 1:length(indexes)
-        push!(PromosingArea,neighbors[indexes[i]])
+        push!(PromisingArea,neighbors[indexes[i]])
     end
-    COMPASS_SearcherState(x, V[1,:].meanSampling, 0, V, PromosingArea), 0
+    COMPASS_SearcherState(x, V[1,:].meanSampling, 0, V, PromisingArea), nbrSim
 end

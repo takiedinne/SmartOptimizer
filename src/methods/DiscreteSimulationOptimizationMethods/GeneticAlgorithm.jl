@@ -15,6 +15,38 @@ function mutation_fun(x,problem::Problem{T}) where {T}
     end
     new_x
 end
+"""
+    domainrange(valrange, m = 20)
+Returns an in-place real valued mutation function that performs the BGA mutation scheme with the mutation range `valrange` and the mutation probability `1/m` [^1].
+"""
+function mutation_domainrange(x, problem::Problem; m=20)
+    t1 = typeof(x)
+    prob = 1.0 / m
+    valrange =  -1 .* problem.lower .+ problem.upper
+    function mutation(recombinant::T) where {T <: AbstractVector}
+        recombinant = Float64.(recombinant)
+        d = length(recombinant)
+        @assert length(valrange) == d "Range matrix must have $(d) columns"
+        δ = zeros(m)
+        for i in 1:length(recombinant)
+            for j in 1:m
+                δ[j] = (rand() < prob) ? δ[j] = 2.0^(-j) : 0.0
+            end
+            if rand() > 0.5
+                recombinant[i] += sum(δ)*valrange[i]
+            else
+                recombinant[i] -= sum(δ)*valrange[i]
+            end
+        end
+        x = t1(round.(recombinant .+ x))
+        check_in_bounds(problem.upper, problem.lower, x ) 
+        if t1 != typeof(x)
+            println(" warning ")
+        end
+        return x
+    end
+    mutation(x)
+end
 mutable struct GeneticAlgorithm <: LowLevelHeuristic
     method_name::String
     populationSize::Int
@@ -59,10 +91,10 @@ end
 function initial_state(method::GeneticAlgorithm, problem::Problem{T}) where {T<:Number}
     N = problem.dimension
     fitness = zeros(method.populationSize)
-
     # setup state values
     eliteSize = isa(method.ɛ, Int) ? method.ɛ : round(Int, method.ɛ * method.populationSize)
     population = initial_population(method, problem)
+    
     # Evaluate population fitness
     fitness = map(i -> problem.objective(i), population)
     minfit, fitidx = findmin(fitness)
@@ -80,7 +112,6 @@ function update_state!(method::GeneticAlgorithm, problem::Problem{T}, iteration:
     crossover = method.crossover
     mutation = method.mutation
     population = state.population
-    
     offspring = similar(population)#initiate a array of the same size of population with undef values
     
     # Select offspring
@@ -95,6 +126,7 @@ function update_state!(method::GeneticAlgorithm, problem::Problem{T}, iteration:
         j = (i == offspringSize) ? i-1 : i+1
         if rand() < crossoverRate
             offspring[i], offspring[j] = crossover(population[selected[offidx[i]]], population[selected[offidx[j]]])
+            offspring[i], offspring[j] = Int64.(offspring[i]), Int64.(offspring[j])
         else
             offspring[i], offspring[j] = population[selected[i]], population[selected[j]]
         end
@@ -122,11 +154,14 @@ function update_state!(method::GeneticAlgorithm, problem::Problem{T}, iteration:
     
     # find the best individual
     minfit, fitidx = findmin(state.fitpop)
-    state.x = population[fitidx]
-    state.f_x = state.fitpop[fitidx]
-    #return the best values and it is the current
+    if minfit <= state.f_x
+        state.x = population[fitidx]
+        state.f_x = state.fitpop[fitidx]
+    end
     
-    state.x , state.f_x, method.populationSize
+    #return the best values and it is the current
+    #state.x , state.f_x, method.populationSize
+    population[fitidx], state.fitpop[fitidx], method.populationSize
 end
 function create_state_for_HH(method::GeneticAlgorithm, problem::Problem, HHState::HH_State)
     nbrSim = 0

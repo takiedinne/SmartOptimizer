@@ -4,7 +4,7 @@
 #  SIAM review 45.3 (2003): 385-482.
 #
 """
-`DirectionGenerator` generates the search directions to use at each step of
+DirectionGenerator` generates the search directions to use at each step of
 a GSS search.
 """
 abstract type DirectionGenerator end
@@ -14,8 +14,7 @@ struct ConstantDirectionGen <: DirectionGenerator
     ConstantDirectionGen(directions) = new(directions)
 end
 
-directions_for_k(cg::ConstantDirectionGen, k) =
-    cg.directions # For a ConstantDirectionGen it is always the same regardless of k...
+directions_for_k(cg::ConstantDirectionGen, k) = cg.directions # For a ConstantDirectionGen it is always the same regardless of k...
 
 # We can easily do a compass search with GSS by generating directions
 # individually (+ and -) for each coordinate.
@@ -76,7 +75,7 @@ function initial_state(method::GeneratingSetSearcher, problem::Problem{T}) where
     upper = problem.upper
     objfun = problem.objective
     initial_x = problem.x_initial
-    n= length(initial_x)
+    n = length(initial_x)
     directions= method.direction_gen(n)
     step_size = calc_initial_step_size(lower, upper, method.step_size_factor)
     f= objfun(initial_x)
@@ -87,7 +86,7 @@ function check_in_bounds(upper, lower, x)
     if length(lower) > 0
         for i in 1: length(x)
             if x[i]<lower[i]
-                x[i]=lower[i]
+                x[i] = lower[i]
             end
         end
     end
@@ -110,7 +109,7 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     directions = state.directions.directions #Matrix each column is vector to add to the current solution
     if state.step_size < 1
         # Restart from a random point because it converged to a local minimum
-        random_x!(state.x_current, length(state.x_current), upper= upper, lower= lower)
+        random_x!(state.x_current, length(state.x_current), upper = upper, lower = lower)
        
         state.f_x_current = f(state.x_current)
         nbrSim += 1
@@ -125,33 +124,38 @@ function update_state!(method::GeneratingSetSearcher, problem::Problem{T}, itera
     found_better = false
     candidate = zeros(state.n, 1)
     f_candidate = Inf
-    
+   
     # Loop over directions until we find an improvement (or there are no more directions to check).
+    # this first improvement 
     for direction in order
         candidate = Integer.(round.(state.x_current + state.step_size .* directions[:, direction]))
+        
         #check if the new point in inbounds
         check_in_bounds(upper, lower, candidate)
+        
         f_candidate = f(candidate)
-        nbrSim+=1
-        if f_candidate<state.f_x_current
+        nbrSim += 1
+        if f_candidate < state.f_x_current
             found_better = true
             break
         end
     end
 
     if found_better
-        state.x_current = candidate
+        state.x_current = copy(candidate)
         state.f_x_current = f_candidate
         state.step_size *= method.step_size_gamma
         if f_candidate < state.f_x
-            state.x = candidate
+           
+            state.x = copy(candidate)
             state.f_x = f_candidate
         end
     else
         state.step_size *= method.step_size_phi
     end
     state.step_size = min(state.step_size, method.step_size_max* minimum(upper.-lower))
-    state.x_current , state.f_x_current, nbrSim 
+    
+    state.x_current , state.f_x_current, nbrSim # current or the best are the same
 end
 
 function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, HHState::HH_State)
@@ -162,5 +166,5 @@ function create_state_for_HH(method::GeneratingSetSearcher, problem::Problem, HH
     step_size = calc_initial_step_size(problem.lower, problem.upper, method.step_size_factor)
     
     GeneratingSetSearcherState(directions, n , 0, step_size, initial_x,
-    f, copy(initial_x), f), 1
+    f, copy(initial_x), f), 0
 end

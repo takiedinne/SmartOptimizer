@@ -27,7 +27,7 @@ SimulatedAnnealing(;neighbor = default_neighbor!,
       SimulatedAnnealing("Simulated Annealing",neighbor, temperature, keep_best)
 
 mutable struct SimulatedAnnealingState{Tx,T} <:State
-    x::Tx# the best
+    x::Tx # the best
     iteration::Int
     x_current::Tx
     x_proposal::Tx

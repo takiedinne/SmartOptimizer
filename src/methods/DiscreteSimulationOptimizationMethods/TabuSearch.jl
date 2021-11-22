@@ -1,4 +1,3 @@
-
 function default_neighbor(x::AbstractArray{T}, upbound, lowBound, objfun) where T
     neighbors=DataFrame(:x=>[], :f=>[], :edited_dim=>[])
     nbr_simulation=0
@@ -9,11 +8,11 @@ function default_neighbor(x::AbstractArray{T}, upbound, lowBound, objfun) where 
         x2[i] -= 1
         if isFeasible(x1,upbound, lowBound)  
             push!(neighbors,(x1,objfun(x1),i))
-            nbr_simulation+=1
+            nbr_simulation += 1
         end
         if isFeasible(x2,upbound, lowBound)  
             push!(neighbors,(x2,objfun(x2),i))
-            nbr_simulation+=1
+            nbr_simulation += 1
         end
     end
     neighbors, nbr_simulation
@@ -25,7 +24,6 @@ struct TabuSearch{Tn, Ttenur} <: LowLevelHeuristic
     neighbor::Tn
     tenure_increase::Ttenur
     tenure_decrease::Ttenur
-    
 end
 TabuSearch(;neighbor = default_neighbor,
     tenure_increase = 3,
@@ -55,29 +53,29 @@ function update_state!(method::TabuSearch, problem::Problem{T}, iteration::Int, 
     nbrSim = 0
     #get all the neighbors and their fitness value
     neighbors, nbr_simulation = method.neighbor(state.x_current, problem.upper, problem.lower, problem.objective)
-    state.nbr_simulation+=nbr_simulation
+    state.nbr_simulation += nbr_simulation
     nbrSim += nbr_simulation
-    best_neighbor=neighbors[argmin(neighbors.f),:]
+    best_neighbor = neighbors[argmin(neighbors.f),:]
     #increase= true
     if best_neighbor.f >= state.f_x
         #increase= false
-        while (haskey(state.increase_tabu_list, best_neighbor.edited_dim) ||
-                haskey(state.decrease_tabu_list, best_neighbor.edited_dim)) &&
+        while haskey(state.increase_tabu_list, best_neighbor.edited_dim) ||
+                haskey(state.decrease_tabu_list, best_neighbor.edited_dim) &&
                     best_neighbor.f != Inf
             #state.tabu_list[best_neighbor.edited_dim]=state.tenure_decrease
-            neighbors[argmin(neighbors.f), :f]=Inf
-            best_neighbor=neighbors[argmin(neighbors.f),:]
+            neighbors[argmin(neighbors.f), :f] = Inf
+            best_neighbor = neighbors[argmin(neighbors.f),:]
         end
         if best_neighbor.f != Inf 
-            state.x_current=best_neighbor.x
+            state.x_current = best_neighbor.x
             push!(state.decrease_tabu_list,best_neighbor.edited_dim => state.iteration)
         end
     else
-        state.x=best_neighbor.x
-        state.f_x=best_neighbor.f
-        state.x_current=best_neighbor.x
-        state.f_x_current=best_neighbor.f
-        state.increase_tabu_list[best_neighbor.edited_dim]=state.iteration
+        state.x = best_neighbor.x
+        state.f_x = best_neighbor.f
+        state.x_current = best_neighbor.x
+        state.f_x_current = best_neighbor.f
+        state.increase_tabu_list[best_neighbor.edited_dim] = state.iteration
     end
 
     state.iteration += 1

@@ -69,7 +69,7 @@ mutable struct TabuSearchHH <: HyperHeuristic
     method_name::String
     tabuLearningMechanism::Function
     selectionMechanism::Function
-    moveAcceptance::Function
+    moveAcceptance::MoveAcceptanceMechanism
     episodeSize::Integer
     archiveSize::Integer
 
@@ -77,7 +77,7 @@ mutable struct TabuSearchHH <: HyperHeuristic
     initialTabuDuration::Integer
     maxTabuDuration::Integer
 end
-TabuSearchHH(;AS=10, TLM=choiceFunction, SM=defaultSelectionFunc, TA=600, MA= NaiveAcceptance,
+TabuSearchHH(;AS=10, TLM=choiceFunction, SM=defaultSelectionFunc, TA=600, MA= NaiveAcceptance(),
                 InitTD=1, MAXTD = 10, es=1) = TabuSearchHH("Tabu Search Hyper Heuristic",
                                                         TLM, SM, MA, es, AS, TA, InitTD, MAXTD)
 mutable struct TabuSearchHHState{T} <:HH_State
@@ -157,7 +157,7 @@ function update_HHState!(method::TabuSearchHH, problem::Problem, HHState::TabuSe
     end
     # new solution is tuple of solution and fitness
     # move acceptance
-    if method.moveAcceptance(newSolution, [HHState.x, HHState.x_fit])
+    if isAccepted(method.moveAcceptance, newSolution, [HHState.x, HHState.x_fit])
         HHState.x, HHState.x_fit = newSolution
         #check if it is a new best solution
         if HHState.x_best_fit > newSolution[2]

@@ -5,12 +5,14 @@ module SmartOptimizer
     using Random
     using DataFrames
     using Evolutionary
-    using Statistics
+    using Statistics, StatsBase
     using Distributions
     using Combinatorics
     using Plots, StatsPlots
     using Distances
     using CSV
+    using LightGraphs
+    using GraphPlot
 
     include("types.jl")
     include("api.jl")
@@ -26,6 +28,7 @@ module SmartOptimizer
     include("methods/DiscreteSimulationOptimizationMethods/StochasticComparison.jl")
     include("methods/DiscreteSimulationOptimizationMethods/StochasticRuler.jl")
     include("methods/DiscreteSimulationOptimizationMethods/TabuSearch.jl")
+    include("methods/DiscreteSimulationOptimizationMethods/AntsColony.jl")
     #the hyper heuristic methods
     include("HyperHeuristics/moveAcceptance.jl")
     include("HyperHeuristics/LearningFunctions.jl")
@@ -53,6 +56,11 @@ module SmartOptimizer
         StochasticComparison,
         StochasticRuler,
         TabuSearch,
+        AntColonySearcher,
+        # moveAcceptance
+        OnlyImprovement, AllMoves, NaiveAcceptance, ILTA,
+        # learning mechanism
+        reward_punish_LM, SARSA_LM, QLearning_LM, LearningAutomata,
         #hyper heuristic
         HH_optimize,
         ϵGreedy,
