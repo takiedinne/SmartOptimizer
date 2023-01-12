@@ -21,7 +21,7 @@ X=collect(Iterators.product(D1,D2))
 #reshap to one column
 X=reshape(X,(:,1))
 Y=[]
-for i in 1:length(X)
+for i in eachindex(X)
     push!(Y,Objective_function(X[i]))
 end
 Y
@@ -56,7 +56,7 @@ function S²_il(X::DataFrame)
             x2=X[l,:Y]
             sum=0
             diffMean=(mean(x1)-mean(x2))
-            for j in 1:length(x1)
+            for j in eachindex(x1)
                sum+= (x1[j]-x2[j]-diffMean)^2
             end
             S[i,l]=sum/(length(x1)-1)

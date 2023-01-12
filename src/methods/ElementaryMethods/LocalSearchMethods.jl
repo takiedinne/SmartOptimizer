@@ -26,15 +26,6 @@ many variant
  Handbook of Metaheuristics, 475–513. https://doi.org/10.1007/0-306-48056-5_17
 """
 
-# default neighbors are those who are different from the original solution in one dimension
-function defaultNeighborsGenerator(x, upbound, lowBound)  
-    dim = length(x)
-    neighbors=[[i == j ? x[i] + 1 : x[i] for i in 1:dim ] for j in 1:dim]
-    append!(neighbors, [[i == j ? x[i] - 1 : x[i] for i in 1:dim ] for j in 1:dim])
-    #neighbors
-    return neighbors[[isFeasible(neighbors[i], upbound,lowBound) for i in 1:length(neighbors)]]
-end
-
 struct SteepestDescentMethod <: LocalSearch
     method_name::String
     maxSearchDepth #nbr max of iterations # to do find a good value for this parameter
@@ -110,4 +101,42 @@ function update_state!(method::FirstImprovementMethod, problem::Problem{T}, iter
         state.f_x = best_local_fit
     end
     state.x, state.f_x, nbrOfsim # we've invoked the similation only one time
+end
+
+struct RandomImprovementMethod <: LocalSearch
+    method_name::String
+    maxSearchDepth #nbr max of iterations # to do find a good value for this parameter
+    neighborGenerator
+end
+RandomImprovementMethod(;depth = 5, neighborGenerator = defaultNeighborsGenerator) = 
+    RandomImprovementMethod("Random Improvement Method", depth, neighborGenerator)
+
+function update_state!(method::RandomImprovementMethod, problem::Problem, iteration::Int, state::LocalSearchState)
+    nbrOfsim = 0
+    while state.currentDepth <= method.maxSearchDepth
+        #get all feasible solution in the neighborhood
+        neighbors = method.neighborGenerator(state.x, problem.upper, problem.lower)
+        best_local_fit = state.f_x
+        best_fits = []
+        best_x_s = []
+        for n in neighbors
+            f_n = problem.objective(n)
+            nbrOfsim += 1
+            if f_n >= best_local_fit
+                push!(best_fits, f_n)
+                push!(best_x_s, n)
+            end
+        end
+        if length(best_x_s)  == 0
+            # there is no improvement
+            break
+        end
+        # randomly chose one between the improved solutions
+        selected_neighbor_index = rand(1:length(best_x_s))
+        state.x = best_x_s[selected_neighbor_index]
+        state.f_x = best_fits[selected_neighbor_index]
+
+        state.currentDepth += 1
+    end
+    state.x, state.f_x, nbrOfsim 
 end

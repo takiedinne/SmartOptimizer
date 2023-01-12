@@ -58,7 +58,7 @@ function RankSelect(obj::Function,D...)
     for x in eachrow(X)
         N= max(n0,trunc(Int,ψ^2*x.σ/δ^2)+1)
         if N> n0 
-            x[:μ],x[:σ] =getSamplingMeanVariance(obj,x.x1,N)
+            x[:μ],x[:σ] = getSamplingMeanVariance(obj,x.x1,N)
         end
     end
     #return the Tuple with the minumum sampling mean

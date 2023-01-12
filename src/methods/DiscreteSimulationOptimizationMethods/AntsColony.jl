@@ -37,7 +37,7 @@ mutable  struct AntColonySearcherState{T} <:State
 end 
 
 function constructGraph(upper, lower)
-    nbr_vertex = sum(upper[i] - lower[i] + 1 for i in 1:length(upper)) + 1
+    nbr_vertex = sum(upper[i] - lower[i] + 1 for i in eachindex(upper)) + 1
     g = SimpleDiGraph(nbr_vertex)
     for j in 1:(upper[1] - lower[1] + 1)
         add_edge!(g, 1, j+1)
@@ -96,13 +96,13 @@ function run_ant(G, τ, A, problem)
     # translate the solution
     x_translated = []
     k = 2
-    for i in 2:length(x)
+    for i in 2:size(x)[1]
         push!(x_translated, lower[i-1] + x[i] - k)  
         k += sum(upper[i-1] - lower[i-1] + 1)
     end
 
     l = problem.objective(x_translated)
-    for i in 2 : length(x)
+    for i in 2 : size(x)[1]
         τ[(x[i-1],x[i])] += 1/l # you must see another phermone update function which take on consideration
                                 # the fact where we have negative fitness values
     end

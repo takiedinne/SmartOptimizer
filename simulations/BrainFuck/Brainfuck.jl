@@ -17,7 +17,7 @@ export BFProg, find_matching_bracket, find_matching_bracket_reverse, brainfuck, 
 function find_matching_bracket(str::String)
 	counter_open = 1
 	counter_close = 0
-	for i in 1:length(str)
+	for i in eachindex(str)
 		if str[i] == '['
 			counter_open += 1
 		elseif str[i] == ']'
@@ -187,7 +187,7 @@ function purify_code(bf_prog::String)
 		new1 = filter_code(old)
 	end
 	indexToDelete = Int64[]
-	for i in 1:length(new1)
+	for i in eachindex(new1)
 		if new1[i] == '['
 			if find_matching_bracket(new1[i+1:end]) === nothing
 				append!(indexToDelete,[i])
@@ -195,7 +195,7 @@ function purify_code(bf_prog::String)
 		end
 	end
 	
-	for i in 1:length(new1)
+	for i in eachindex(new1)
 		if new1[i] == ']'
 			if i == 1
 				append!(indexToDelete,[i])

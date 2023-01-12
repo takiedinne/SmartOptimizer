@@ -37,12 +37,23 @@ function GetNeighbors(x, upbound, lowBound)
     neighbors
 end
 
-function SimulationAllocationRule(method::COMPASS_Searcher, k::Int)
+function equale_simulation_allocation_rule(method::COMPASS_Searcher, k::Int)
+    # equale Simulation allocation rule
     min(5, floor(method.β*log(k)^(1+method.γ))+1)
 end
 
+function vieira_simulation_allocation_rule(visited_solution, new_solution;λ=10, n_0 = 3)
+    # this simulation allocation Rule from paper [1]
+    # [1] J. Hélcio Vieira, K. H. Kienitz, and M. C. N. Belderrain,
+    # “DISCRETE-VALUED, STOCHASTIC-CONSTRAINED SIMULATION OPTIMIZATION WITH COMPASS,” 
+    #Proc. 2011 Winter Simul. Conf., pp. 3605–3616, 2011.
+    
+    # to implement
+
+end
+
 const COMPASSDefaultPrametres = Dict( :neighborsSearcher => GetNeighbors,
-                                      :SimulationAllocationRule => SimulationAllocationRule,
+                                      :SimulationAllocationRule => equale_simulation_allocation_rule,
                                       :m => 5,
                                       :β => 5,
                                       :γ => 0.01)
@@ -71,7 +82,7 @@ function initial_state(method::COMPASS_Searcher, problem::Problem{T}) where {T<:
     V = DataFrame(:x=>[],:addSimulation=>Int[],
                     :NumberSimulationDone=>Int[], :meanSampling=>[])# List of visited solutions
     
-    addSim = method.SimulationAllocationRule(method,0)
+    addSim = method.SimulationAllocationRule(method,1)
     fit_sum = 0
     for i in 1:addSim
         fit_sum += objfun(initial_x)
@@ -84,15 +95,15 @@ function initial_state(method::COMPASS_Searcher, problem::Problem{T}) where {T<:
         random_x!(x, dimension, upper = upper, lower = lower)
         push!(PromisingArea,x)
     end
-    COMPASS_SearcherState(initial_x, V[1,:].meanSampling, 0, V, PromisingArea)
+    COMPASS_SearcherState(initial_x, V[1,:].meanSampling, 1, V, PromisingArea)
 end
 
 function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration::Int, state::COMPASS_SearcherState) where {T}
     #we add all the solution in promsing area to value
-    addSim = SimulationAllocationRule(method, state.k) #adaptive number of simulation for the next iteration
+    addSim = method.SimulationAllocationRule(method, state.k) #adaptive number of simulation for the next iteration
     PromisingArea = state.PromisingArea # list of solution to visite 
     
-    f = problem.objective # the objective function
+    f = problem.objective #the objective function
     for i in 1:size(PromisingArea)[1]
         if PromisingArea[i] in state.V.x
             j = findfirst(x-> x == PromisingArea[i],state.V.x)
@@ -124,7 +135,7 @@ function update_state!(method::COMPASS_Searcher, problem::Problem{T}, iteration:
     indexes=rand(1:length(neighbors),method.m)
     
     PromisingArea=[]
-    for i in 1:length(indexes)
+    for i in eachindex(indexes)
         push!(PromisingArea, neighbors[indexes[i]])
     end
     state.PromisingArea = PromisingArea
@@ -146,7 +157,7 @@ function create_state_for_HH(method::COMPASS_Searcher, problem::Problem{T}, HHSt
     neighbors = method.neighborsSearcher(x,problem.upper,problem.lower)
     # we sample m solution from these neighbors
     indexes=rand(1:length(neighbors), method.m)
-    for i in 1:length(indexes)
+    for i in eachindex(indexes)
         push!(PromisingArea,neighbors[indexes[i]])
     end
     COMPASS_SearcherState(x, V[1,:].meanSampling, 0, V, PromisingArea), nbrSim

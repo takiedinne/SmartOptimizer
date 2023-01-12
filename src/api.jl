@@ -15,6 +15,7 @@ function HH_optimize(method::HyperHeuristic, problem::Problem{T}, options::Optio
   HHstate, nbrOfRuns = initial_HHstate(method, problem)
   nbrTotalSim += nbrOfRuns
   while true
+    println(method.method_name," iteration: ", iteration)
     x_cur, f_cur, nbrOfRuns = update_HHState!(method, problem, HHstate, iteration)
     nbrTotalSim += nbrOfRuns
     push!(fit_historic,HHstate.x_fit)
@@ -60,7 +61,7 @@ end
 
 function loadAllLLH()
   methods= Array{LowLevelHeuristic,1}()
-  push!(methods, GeneticAlgorithm())
+  #=push!(methods, GeneticAlgorithm())
   push!(methods, HookeAndJeeves())
   push!(methods, ParticleSwarm())
   push!(methods, SimulatedAnnealing())
@@ -71,13 +72,27 @@ function loadAllLLH()
   
   push!(methods, NelderMead())
   push!(methods, COMPASS_Searcher())
-  #push!(methods, AntColonySearcher())
-  #=push!(methods, SinglePointCrossover())
+  push!(methods, AntColonySearcher())=#
+
+  push!(methods, SinglePointCrossover())
   push!(methods, TwoPointCrossover())
-  push!(methods, UniformCrossover())
+  push!(methods, BinomialCrossover())
+  push!(methods, ExponetialCrossover())
   push!(methods, InterpolationCrossover())
+  push!(methods, KPointCrossover(k=3))
+  push!(methods, FlatCrossover())
+  #push!(methods, OrderBasedCrossover())
+  #push!(methods, shuffleCrossover())
+
   push!(methods, SteepestDescentMethod())
-  push!(methods, FirstImprovementMethod())=#
+  push!(methods, FirstImprovementMethod())
+  push!(methods, RandomImprovementMethod())
+
+  push!(methods, bitWiseMutation())
+  push!(methods, GaussianMutation())
+  push!(methods, SelfAdaptiveMutation())
+  push!(methods, PowerMutation())
+  push!(methods, Non_Uniform_Mutation(Gmax = 10))
   return methods
 end
 function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_State) where T
@@ -110,25 +125,34 @@ function apply_LLH!(LLHs, problem::Problem{T}, phaseSize::Integer, HHState::HH_S
   newSolutions, performances
 end
 
-function get_solution_from_archive(archive, problem::Problem, nbr_of_solutions::Integer)
+function get_solution_from_archive(archive::DataFrame, problem::Problem, nbr_of_solutions::Integer; order = :best)
+  # order can take best, random or roulette
+  @assert order in [:best, :random, :roulette] "order not valid"
+  #check if the size of archive is greater than the nbr of demanded solution 
   nbrSim = 0
-  archiveCopy = copy(archive)
-  archiveCopy = sort!(archiveCopy,[:fit])
-  if nrow(archive) >= nbr_of_solutions
-      pop = archiveCopy.x[1:nbr_of_solutions]
-      f_pop = archiveCopy.fit[1:nbr_of_solutions]
-  else
-      pop = archiveCopy.x
-      f_pop = archiveCopy.fit
-      n = length(archiveCopy.x[1])
-      for i in 1:(nbr_of_solutions - nrow(archive))
-          tmp = copy(archiveCopy.x[1])
-          random_x!(tmp, n, upper = problem.upper, lower = problem.lower)
-          push!(pop, tmp)
-          push!(f_pop, problem.objective(tmp))
-          nbrSim += 1
-      end
+  if nbr_of_solutions > nrow(archive)
+    # here we genrate random solution to fill the missing solution
+    n = problem.dimension
+    for _ in 1:(nbr_of_solutions - nrow(archive))
+      tmp = similar(problem.x_initial)
+      random_x!(tmp, n, upper = problem.upper, lower = problem.lower)
+      fit =  problem.objective(tmp)
+      push!(archive, (tmp, fit))
+      nbrSim += 1
+    end
   end
+  
+  if order == :best
+    sort!(archive,[:fit])
+    SolIdx = 1:nbr_of_solutions |> collect
+  elseif order == :random
+    SolIdx = randperm(nrow(archive))[1:nbr_of_solutions]
+  else # oreder = :roulette
+    @assert all(archive.fit .>=  0) " roulette inv method can make wrong selection for negative numbers"
+    SolIdx = rouletteinv(archive.fit, nbr_of_solutions)
+  end
+  pop, f_pop =  archive.x[SolIdx], archive.fit[SolIdx]
+  
   if nbr_of_solutions == 1
     return pop[1], f_pop[1], nbrSim
   else
@@ -200,9 +224,9 @@ function optimize(method::LowLevelHeuristic, problem::Problem{T}, options::Optio
   
   plot(1:length(fit_historic), fit_historic, label= method.method_name)
   savefig(string("C:\\Users\\Folio\\Desktop\\Preparation doctorat ERM\\Experimental Results\\discrete low level heuristics comparison\\500Iter\\",method.method_name,".png"))
-  =#
   
-  display(plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5))
+  
+  display(plot!(1:length(best_fit_historic), best_fit_historic, label = method.method_name, linewidth = 5))=#
   return Results(
     method.method_name,
     problem.x_initial,

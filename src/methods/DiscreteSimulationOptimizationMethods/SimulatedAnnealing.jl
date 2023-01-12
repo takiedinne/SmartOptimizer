@@ -4,7 +4,7 @@ constant_temperature(t) = 1.0
 
 function default_neighbor!(x::AbstractArray{T}, x_proposal::AbstractArray, upper, lower) where T
     @assert size(x) == size(x_proposal)
-    for i in 1:length(x)
+    for i in eachindex(x)
         tmp = x[i] + round(randn())
         if lower[i] < tmp < upper[i] # workaround because all types might not have randn
             x_proposal[i] =  tmp

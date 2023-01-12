@@ -84,14 +84,14 @@ end
 
 function check_in_bounds(upper, lower, x)
     if length(lower) > 0
-        for i in 1: length(x)
+        for i in eachindex(x)
             if x[i]<lower[i]
                 x[i] = lower[i]
             end
         end
     end
     if length(upper) > 0 
-        for i in 1: length(x)
+        for i in eachindex(x)
             if x[i]>upper[i]
                 x[i]=upper[i]
             end

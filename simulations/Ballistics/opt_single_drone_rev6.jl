@@ -8,7 +8,7 @@ function hyper_opt_test()
       b in LinRange(0.1, 10, 1000),
       c in LinRange(250, 1000, 100),
       d in LinRange(0.001, 0.04, 40)
-      #cost = configuration(a, b, c,d)
+      #cost = configuration(a, b, c, d)
       #print(i, "\t", a, "\t", b,"\t", c,"\t",d,  "   \t")
       #x = 100
       configuration(a, b, c, d)

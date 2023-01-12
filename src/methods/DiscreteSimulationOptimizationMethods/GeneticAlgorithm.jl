@@ -28,7 +28,7 @@ function mutation_domainrange(x, problem::Problem; m=20)
         d = length(recombinant)
         @assert length(valrange) == d "Range matrix must have $(d) columns"
         δ = zeros(m)
-        for i in 1:length(recombinant)
+        for i in eachindex(recombinant)
             for j in 1:m
                 δ[j] = (rand() < prob) ? δ[j] = 2.0^(-j) : 0.0
             end
@@ -59,7 +59,7 @@ mutable struct GeneticAlgorithm <: LowLevelHeuristic
 
     GeneticAlgorithm(; populationSize::Int=10, crossoverRate::Float64=0.8, mutationRate::Float64=0.1,
         ɛ::Real=0.2, epsilon::Real=ɛ,
-        selection::Function = roulette,
+        selection::Function = rouletteinv,
         crossover::Function = twopoint, mutation::Function = mutation_fun) =
         new("Genetic Algorithm", populationSize, crossoverRate, mutationRate, epsilon, selection, crossover, mutation)
 end

@@ -88,7 +88,7 @@ function update_state!(method::HookeAndJeeves, problem::Problem{T}, iteration::I
     # If the cardinal direction searches did not improve, reduce the
     # step size
     if (x_k == x_b)
-        @show "didin't improve at $iteration"
+        #@show "didin't improve at $iteration"
         state.step_size *= method.step_reduction
     end
 

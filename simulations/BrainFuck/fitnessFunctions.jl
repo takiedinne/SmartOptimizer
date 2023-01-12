@@ -33,7 +33,7 @@ function fitnessStr(progInteger; ticksLim = 10000)
     end
     
 
-    for i in 1:length(pad_prog_out)
+    for i in eachindex(pad_prog_out)
         diff += abs(pad_prog_out[i]-pad_expect_out[i])
     end
 	

@@ -20,7 +20,8 @@ custumerarrivalTime =[]
 custumerWaitingTime =[]
 
 SteadyStateAchieved=zeros(J)
-
+global exit = false
+global queues_array = []
 mutable struct customer
     enterToSystemTime
     exitFromSystemTime
@@ -37,7 +38,7 @@ mutable struct Queue
     process
 end
 @resumable function queue_process(env::Environment, server::Resource, queue::Queue, customer_arrival_proc::Process, K)
-    while true
+    while !exit
         #println("queue process")
         @yield request(server)# waiting our turn
        # println(" the server is now processing the queue N° ", queue.id)
@@ -77,7 +78,7 @@ end
 
 @resumable function CostumerArrival(env::Environment, queue::Queue)
     ArrivalDistribution= Poisson(λ[1])
-    while true
+    while !exit
         @yield timeout(env,60 * rand(ArrivalDistribution))
         if length(queue.customerInQueue) < queue.capacity
             #println(" a customer is arriving to the queue n° ", queue.id)
@@ -96,13 +97,41 @@ end
     end
 end
 
+
+@resumable function waiting_time_survey(env::Environment)
+    old_average_waiting_time = 0
+    while true
+        @yield timeout(env, 100)
+        #println("survey is up at ", now(env))
+        sumMean = 0
+        sumWeight = 0
+        for i in 1:J
+            if length(queues_array[i].servedCustomer) > 0
+                #count the mean of this queue
+                sumWaitingTime = 0
+                for c in queues_array[i].servedCustomer
+                    sumWaitingTime += c.waitingTime
+                end
+                numberOfCustumer = length(queues_array[i].servedCustomer)
+                sumMean += sumWaitingTime / numberOfCustumer *τ[i]
+                sumWeight += τ[i]
+            end
+        end
+        new_average_waiting_time = sumMean/sumWeight
+        if abs(new_average_waiting_time - old_average_waiting_time) <= 1
+            global exit = true
+            break
+        end
+    end 
+end
+
 function sim_GG1K(K)
    # println("simulating $K")
     sim = Simulation()
     # initialize the server
     server = Resource(sim, 1)
     # initialise the queues queues process and arrival customers  
-    queues_array = []
+    global queues_array = []
     for i in 1:J
         queue = Queue(i, customer[], customer[], capacity[i], false, false, NaN)        
         proc = @process CostumerArrival(sim,queue)
@@ -110,7 +139,7 @@ function sim_GG1K(K)
         queue.process = queueProc
         push!(queues_array, queue)
     end
-
+    #@process waiting_time_survey(sim)
     run(sim, 480) # 8 hours
 
     sumMean = 0

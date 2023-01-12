@@ -20,7 +20,7 @@ function GetNeighborsBoundaries(x, V,upBound, lowBound)
     values=[]
     for i in 1:dim
         a=[]
-        for j in 1:length(V)
+        for j in eachindex(V)
             push!(a,V[j][i])
         end
         push!(values,a)

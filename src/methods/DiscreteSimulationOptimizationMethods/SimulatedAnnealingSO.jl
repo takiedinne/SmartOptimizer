@@ -7,7 +7,7 @@ simulation optimization with applications to simulated annealing. Naval Research
 cooling_temperature(n, C) = C/log(n+10) 
 function N_L(x::AbstractArray{T}, upper, lower) where T
     x_proposal = copy(x)
-    for i in 1:length(x)
+    for i in eachindex(x)
         tmp = x[i] + rand([-1,0,1])
         if lower[i] < tmp < upper[i] # workaround because all types might not have randn
             x_proposal[i] =  tmp

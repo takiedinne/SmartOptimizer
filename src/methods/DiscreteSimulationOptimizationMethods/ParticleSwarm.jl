@@ -109,7 +109,7 @@ function housekeeping!(score, best_score, X, X_best, best_point,
             X_best[:, i] = X[:, i]
             if score[i] <= F
                 #println("best X ",X[:, i]," fit=", score[i])
-                for j in 1:length(best_point) 
+                for j in eachindex(best_point) 
                     best_point[j] = X[j, i]
                 end
             	F = score[i]
@@ -418,7 +418,7 @@ function create_state_for_HH(method::ParticleSwarm, problem::Problem, HHState::H
     append!(X_tmp, [HHState.x])
     append!(score, HHState.x_fit)
     X = X_tmp[1]
-    for i in 2:length(X_tmp)
+    for i in 2:size(X_tmp)[1]
         X= hcat(X, X_tmp[i])
     end
 

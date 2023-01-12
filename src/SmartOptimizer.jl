@@ -1,4 +1,3 @@
-__precompile__() 
 module SmartOptimizer
     
     using LinearAlgebra
@@ -39,6 +38,7 @@ module SmartOptimizer
     include("methods/ElementaryMethods/CrossoverMethods.jl")
     include("methods/ElementaryMethods/MutationMethods.jl")
     include("methods/ElementaryMethods/LocalSearchMethods.jl")
+    include("methods/ElementaryMethods/neighbourhood_structure.jl")
     
     export
         optimize,
@@ -65,5 +65,7 @@ module SmartOptimizer
         HH_optimize,
         ϵGreedy,
         MarkovChainHH,
-        TabuSearchHH
+        TabuSearchHH,
+        # elementary methods
+        SinglePointCrossover, TwoPointCrossover, UniformCrossover, InterpolationCrossover
 end

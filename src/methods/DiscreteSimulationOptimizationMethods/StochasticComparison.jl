@@ -51,14 +51,14 @@ function update_state!(method::StochasticComparison, problem::Problem{T}, iterat
         f_condidate = problem.objective(state.x_condidate)
         sum_f_condidate += f_condidate
         if f_condidate > f
-            println("failed at iteration $iteration")
+            #println("failed at iteration $iteration")
             comparisonTest = false
             break
         end
     end
     
     if comparisonTest
-        println("succeed at iteration $iteration")
+        #println("succeed at iteration $iteration")
         state.x= state.x_condidate
         state.f_x= sum_f_condidate / nbrOfComparison
         state.nbr_simulated_optimal = nbrOfComparison
